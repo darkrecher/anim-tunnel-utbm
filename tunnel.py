@@ -9,6 +9,48 @@ import pygame.surfarray
 from pygame.compat import geterror
 
 
+"""
+À tester, quand on en sera à texturer le tunnel :
+
+>>> data_flat
+array([ 0,  1,  2, 10, 20, 30])
+>>> data_flat[numpy.array([1, 3, 3, 5, 1])]
+array([ 1, 10, 10, 30,  1])
+>>>
+>>>
+>>> data
+array([[ 0,  1,  2],
+       [10, 20, 30]])
+>>> data[numpy.array([[0, 0], [1, 1]])
+... ]
+array([[[ 0,  1,  2],
+        [ 0,  1,  2]],
+
+       [[10, 20, 30],
+        [10, 20, 30]]])
+>>> data[numpy.array([[0, 0], [1, 1]])]
+array([[[ 0,  1,  2],
+        [ 0,  1,  2]],
+
+       [[10, 20, 30],
+        [10, 20, 30]]])
+>>> data[numpy.array([0, 1])]
+array([[ 0,  1,  2],
+       [10, 20, 30]])
+>>> data[numpy.array([0, 1]), numpy.array([0, 1])]
+array([ 0, 20])
+>>> data[numpy.array([0, 1, 2]), numpy.array([0, 1, 1])]
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+IndexError: index 2 is out of bounds for axis 0 with size 2
+>>> data[numpy.array([0, 1, 1]), numpy.array([0, 1, 2])]
+array([ 0, 20, 30])
+>>>
+
+
+"""
+
+
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, 'data')
 
