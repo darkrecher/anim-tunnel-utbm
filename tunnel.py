@@ -2,8 +2,10 @@
 
 import os
 import math
+import numpy
 import pygame
-from pygame.locals import *
+import pygame.locals
+import pygame.surfarray
 from pygame.compat import geterror
 
 
@@ -43,16 +45,27 @@ def cylinder_coords_from_screen_cords(pix_x, pix_y):
     return angle, cylinder_z
 
 
-def color_from_screen_cords(pix_x, pix_y, offset_z_cylinder=0):
+def colorval_from_screen_cords(pix_x, pix_y, offset_z_cylinder=0):
     try:
         angle, cylinder_z = cylinder_coords_from_screen_cords(pix_x, pix_y)
     except ValueError:
-        return (0, 0, 0)
+        return 0
     cylinder_z += offset_z_cylinder
     blue = ((angle+math.pi)*255)/(2*math.pi)
     blue = int(blue)
     red = int(cylinder_z) & 255
-    return (red, 0, blue)
+    green = 0
+    return red<<16 | green<<8 | blue
+
+
+def cycle_red(colorval):
+    colorval = int(colorval)
+    if colorval>>16 == 255:
+        return colorval & 65535
+    else:
+        return colorval + 65536
+
+v_cycle_red = numpy.vectorize(cycle_red)
 
 
 def main():
@@ -69,12 +82,22 @@ def main():
     background.fill((250, 250, 250))
     timer_tick = 0
 
-    background.lock()
+    surf_array_background =  pygame.surfarray.pixels2d(background)
+    #print(surf_array_background)
+    #pygame.quit()
+
+    #background.lock()
+    #for x in range(screen_size_x):
+    #    for y in range(screen_size_y):
+    #        #background.set_at((x, y), (timer_color & 255, 0, 0))
+    #        background.set_at((x, y), color_from_screen_cords(x, y, timer_tick))
+    #background.unlock()
+
     for x in range(screen_size_x):
         for y in range(screen_size_y):
-            #background.set_at((x, y), (timer_color & 255, 0, 0))
-            background.set_at((x, y), color_from_screen_cords(x, y, timer_tick))
-    background.unlock()
+            surf_array_background[x, y] = colorval_from_screen_cords(x, y, timer_tick)
+
+    del surf_array_background
 
     # Display The Background
     screen.blit(background, (0, 0))
@@ -95,28 +118,50 @@ def main():
     #    if index_color % 10 == 0:
     #        print(index_color)
 
+    array_pixel = numpy.zeros((screen_size_x, screen_size_y))
+
+    for x in range(screen_size_x):
+        for y in range(screen_size_y):
+            array_pixel[x, y] = colorval_from_screen_cords(x, y, timer_tick)
 
     while going:
 
-        clock.tick(60)
+        clock.tick(600)
 
         # Handle Input Events
         for event in pygame.event.get():
-            if event.type == QUIT:
+            if event.type == pygame.locals.QUIT:
                 going = False
-            elif event.type == KEYDOWN and event.key == K_ESCAPE:
+            elif event.type == pygame.locals.KEYDOWN and event.key == pygame.locals.K_ESCAPE:
                 going = False
 
         timer_tick += 1
 
-        #background.lock()
+        #array_pixel = [ 256*65536 + 200*256 + timer_tick ] * (screen_size_x*screen_size_y)
+        #array_pixel = numpy.array(array_pixel)
+
+        #new_array_pixel = numpy.array([cycle_red(colorval) for colorval in array_pixel])
+        #new_array_pixel = numpy.array([colorval+1 for colorval in array_pixel])
+        new_array_pixel = v_cycle_red(array_pixel)
+        array_pixel = new_array_pixel
+
+        #for x in range(screen_size_x):
+        ##for x in range(190, 220):
+        #    for y in range(screen_size_y):
+        #        #array_pixel[x, y] = 256*65536 + 200*256 + timer_tick
+        #        array_pixel[x, y] = colorval_from_screen_cords(x, y, timer_tick)
+
+
+        pygame.surfarray.blit_array(screen, array_pixel)
+
+        #surf_array_background =  pygame.surfarray.pixels2d(background)
         #for x in range(screen_size_x):
         #    for y in range(screen_size_y):
-        #        background.set_at((x, y), color_from_screen_cords(x, y, timer_tick))
-        #background.unlock()
+        #        surf_array_background[x, y] = colorval_from_screen_cords(x, y, timer_tick)
+        #del surf_array_background
 
         # Draw Everything
-        screen.blit(background, (0, 0))
+        #screen.blit(background, (0, 0))
         #screen.blit(speed_test[timer_tick & 255], (0, 0))
         pygame.display.flip()
 
