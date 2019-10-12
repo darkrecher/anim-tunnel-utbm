@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# coding: utf-8
+
 """
 This simple example is used for the line-by-line tutorial
 that comes with pygame. It is based on a 'popular' web banner.
@@ -55,6 +57,13 @@ class Fist(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self) #call Sprite initializer
         self.image, self.rect = load_image('fist.bmp', -1)
+        # Test à l'arrache
+        self.image.lock()
+        for x in range(10, 20):
+            for y in range(10, 20):
+                self.image.set_at((x, y), (0, 0, 255))
+        self.image.unlock()
+        # Fin
         self.punching = 0
 
     def update(self):
@@ -82,6 +91,13 @@ class Chimp(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
         self.image, self.rect = load_image('chimp.bmp', -1)
+        # Re Test à l'arrache. (Ça marche pas bien car le bmp n'est pas en 24 bits, mais osef)
+        self.image.lock()
+        for x in range(10, 20):
+            for y in range(10, 20):
+                self.image.set_at((x, y), (255, 0, 0))
+        self.image.unlock()
+        # Fin
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.rect.topleft = 10, 10
