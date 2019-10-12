@@ -1,17 +1,21 @@
 # coding: utf-8
 
-import os, pygame
+import os
+import math
+import pygame
 from pygame.locals import *
 from pygame.compat import geterror
 
-if not pygame.font: print('Warning, fonts disabled')
-if not pygame.mixer: print('Warning, sound disabled')
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, 'data')
 
 screen_size_x = 400
 screen_size_y = 300
+
+tunnel_diameter = 350
+dist_focale = 200
+
 
 def load_image(name, colorkey=None):
     fullname = os.path.join(data_dir, name)
@@ -28,6 +32,28 @@ def load_image(name, colorkey=None):
     return image, image.get_rect()
 
 
+def cylinder_coords_from_screen_cords(pix_x, pix_y):
+    a_x = pix_x - screen_size_x/2
+    a_y = pix_y - screen_size_y/2
+    if (a_x, a_y) == (0, 0):
+        raise ValueError("La coordonnée du milieu de l'écran ne peut pas atteindre le cylindre")
+    # https://stackoverflow.com/questions/15994194/how-to-convert-x-y-coordinates-to-an-angle
+    angle = math.atan2(a_y, a_x)
+    cylinder_z = dist_focale * tunnel_diameter / (math.sqrt(a_x**2 + a_y**2))
+    return angle, cylinder_z
+
+
+def color_from_screen_cords(pix_x, pix_y, offset_z_cylinder=0):
+    try:
+        angle, cylinder_z = cylinder_coords_from_screen_cords(pix_x, pix_y)
+    except ValueError:
+        return (0, 0, 0)
+    cylinder_z += offset_z_cylinder
+    blue = ((angle+math.pi)*255)/(2*math.pi)
+    blue = int(blue)
+    red = int(cylinder_z) & 255
+    return (red, 0, blue)
+
 
 def main():
 
@@ -41,8 +67,14 @@ def main():
     background = pygame.Surface(screen.get_size())
     background = background.convert()
     background.fill((250, 250, 250))
+    timer_tick = 0
 
-    timer_color = 240
+    background.lock()
+    for x in range(screen_size_x):
+        for y in range(screen_size_y):
+            #background.set_at((x, y), (timer_color & 255, 0, 0))
+            background.set_at((x, y), color_from_screen_cords(x, y, timer_tick))
+    background.unlock()
 
     # Display The Background
     screen.blit(background, (0, 0))
@@ -51,9 +83,17 @@ def main():
     clock = pygame.time.Clock()
     going = True
 
-    speed_test = [ pygame.Surface(screen.get_size()) for _ in range(256) ]
-    for index_color in range(256):
-        speed_test[index_color].fill((index_color, 0, 0))
+    #speed_test = [ pygame.Surface(screen.get_size()) for _ in range(256) ]
+    #for index_color in range(256):
+    #    #speed_test[index_color].fill((index_color, 0, 0))
+    #    current_screen = speed_test[index_color]
+    #    current_screen.lock()
+    #    for x in range(screen_size_x):
+    #        for y in range(screen_size_y):
+    #            current_screen.set_at((x, y), color_from_screen_cords(x, y, index_color))
+    #    current_screen.unlock()
+    #    if index_color % 10 == 0:
+    #        print(index_color)
 
 
     while going:
@@ -67,16 +107,17 @@ def main():
             elif event.type == KEYDOWN and event.key == K_ESCAPE:
                 going = False
 
+        timer_tick += 1
+
         #background.lock()
         #for x in range(screen_size_x):
         #    for y in range(screen_size_y):
-        #        background.set_at((x, y), (timer_color & 255, 0, 0))
+        #        background.set_at((x, y), color_from_screen_cords(x, y, timer_tick))
         #background.unlock()
-        timer_color += 1
 
         # Draw Everything
-        #screen.blit(background, (0, 0))
-        screen.blit(speed_test[timer_color & 255], (0, 0))
+        screen.blit(background, (0, 0))
+        #screen.blit(speed_test[timer_tick & 255], (0, 0))
         pygame.display.flip()
 
     pygame.quit()
@@ -84,3 +125,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
