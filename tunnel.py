@@ -1,11 +1,10 @@
-# coding: utf-8
-
 import os
 import math
 import numpy
 import pygame
 import pygame.locals
 import pygame.surfarray
+import pygame.mixer
 from pygame.compat import geterror
 
 
@@ -54,10 +53,10 @@ array([ 0, 20, 30])
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, 'data')
 
-screen_size_x = 400
-screen_size_y = 300
+screen_size_x = 640
+screen_size_y = 480
 
-tunnel_diameter = 800
+tunnel_diameter = 300
 dist_focale = 100
 
 
@@ -119,6 +118,8 @@ def tex_coord_from_screen_coords(pix_x, pix_y, texture_width, texture_height):
         return (0, 0)
     tex_x = int(cylinder_z % texture_width)
     tex_y = int(((angle+math.pi)*(texture_height-1))/(2*math.pi))
+    # on décale tout de un cinquième, pour que le raccord moche entre le haut et le bas de l'image ne soit pas pil poil sur la partie gauche du tunnel.
+    tex_y = (tex_y + texture_height//5) % texture_height
     return (tex_x, tex_y)
 
 
@@ -137,19 +138,23 @@ def main():
 
     # Initialize Everything
     pygame.init()
+    pygame.mixer.init()
     screen = pygame.display.set_mode((screen_size_x, screen_size_y))
     pygame.display.set_caption('Tunnel 3D')
     pygame.mouse.set_visible(0)
+
+    snd_pere_200_1 = pygame.mixer.Sound(os.path.join('audio', 'pere200_1.wav'))
 
     texture, texture_rect = load_image("texture.png")
     print(texture_rect)
     texture_width = texture_rect.w
     texture_height = texture_rect.h
 
-    array_texture = pygame.surfarray.array2d(texture)
-    print(type(array_texture))
-    print(array_texture.dtype)
-    print(array_texture[0,0])
+    array_texture_origin = pygame.surfarray.array2d(texture)
+    print(type(array_texture_origin))
+    print(array_texture_origin.dtype)
+    print(array_texture_origin[0,0])
+    array_texture = array_texture_origin.copy()
 
     # Create The Backgound
     background = pygame.Surface(screen.get_size())
@@ -157,7 +162,7 @@ def main():
     background.fill((250, 250, 250))
     timer_tick = 0
 
-    surf_array_background =  pygame.surfarray.pixels2d(background)
+    #surf_array_background =  pygame.surfarray.pixels2d(background)
     #print(surf_array_background)
     #pygame.quit()
 
@@ -168,14 +173,28 @@ def main():
     #        background.set_at((x, y), color_from_screen_coords(x, y, timer_tick))
     #background.unlock()
 
-    for x in range(screen_size_x):
-        for y in range(screen_size_y):
-            surf_array_background[x, y] = colorval_from_screen_coords(x, y, texture_width, texture_height, texture, timer_tick)
+    #for x in range(screen_size_x):
+    #    for y in range(screen_size_y):
+    #        surf_array_background[x, y] = colorval_from_screen_coords(x, y, texture_width, texture_height, texture, timer_tick)
 
-    del surf_array_background
+    #del surf_array_background
 
     # Display The Background
-    screen.blit(background, (0, 0))
+    #screen.blit(background, (0, 0))
+
+    # Si la taille (width ou height) de l'image de texture ne tient pas
+    # dans un int 32 bits, ça va péter. Mais franchement osef.
+    screen_from_tunnel_x = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
+    screen_from_tunnel_y = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
+
+    for x in range(screen_size_x):
+        for y in range(screen_size_y):
+            tex_coords = tex_coord_from_screen_coords(x, y, texture_width, texture_height)
+            screen_from_tunnel_x[x, y] = tex_coords[0]
+            screen_from_tunnel_y[x, y] = tex_coords[1]
+
+    #pygame.surfarray.blit_array(screen, screen_from_tunnel_y)
+    pygame.surfarray.blit_array(screen, array_texture[(screen_from_tunnel_x+10) % texture_width, screen_from_tunnel_y])
     pygame.display.flip()
 
     clock = pygame.time.Clock()
@@ -199,18 +218,24 @@ def main():
     #    for y in range(screen_size_y):
     #        array_pixel[x, y] = colorval_from_screen_coords(x, y, timer_tick)
 
+    pause = False
+
     while going:
 
-        clock.tick(600)
+        clock.tick(50)
 
         # Handle Input Events
         for event in pygame.event.get():
             if event.type == pygame.locals.QUIT:
                 going = False
-            elif event.type == pygame.locals.KEYDOWN and event.key == pygame.locals.K_ESCAPE:
-                going = False
+            elif event.type == pygame.locals.KEYDOWN:
+                if event.key == pygame.locals.K_ESCAPE:
+                    going = False
+                if event.key == pygame.locals.K_SPACE:
+                    pause = not pause
 
-        timer_tick += 1
+        if not pause:
+            timer_tick += 10
 
         #array_pixel = [ 256*65536 + 200*256 + timer_tick ] * (screen_size_x*screen_size_y)
         #array_pixel = numpy.array(array_pixel)
@@ -239,7 +264,12 @@ def main():
         # Draw Everything
         #screen.blit(background, (0, 0))
         #screen.blit(speed_test[timer_tick & 255], (0, 0))
+
+        pygame.surfarray.blit_array(screen, array_texture[(screen_from_tunnel_x+(timer_tick//2)) % texture_width, screen_from_tunnel_y])
         pygame.display.flip()
+
+        if (timer_tick+4000) % 5000 == 0:
+            snd_pere_200_1.play()
 
     pygame.quit()
 
