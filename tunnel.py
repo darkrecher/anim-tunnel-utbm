@@ -60,14 +60,19 @@ tunnel_diameter = 300
 dist_focale = 100
 
 
-def load_image(name, colorkey=None):
+def load_image(name, colorkey=None, use_alpha=False):
+    if colorkey and use_alpha:
+        raise Exception("Soit colorkey, soit use_alpha, mais pas les deux.")
     fullname = os.path.join(data_dir, name)
     try:
         image = pygame.image.load(fullname)
     except pygame.error:
         print('Cannot load image:', fullname)
         raise SystemExit(str(geterror()))
-    image = image.convert()
+    if use_alpha:
+        image = image.convert_alpha()
+    else:
+        image = image.convert()
     if colorkey is not None:
         if colorkey is -1:
             colorkey = image.get_at((0, 0))
@@ -161,6 +166,13 @@ def main():
     background = background.convert()
     background.fill((250, 250, 250))
     timer_tick = 0
+
+    #fond_noir = pygame.image.load("data" + os.sep + "fond_noir.png").convert_alpha()
+    fond_noir, fond_noir_rect = load_image("fond_noir.png", use_alpha=True)
+    coord_fond_noir = (
+        (screen_size_x - fond_noir_rect.w) // 2,
+        (screen_size_y - fond_noir_rect.h) // 2
+    )
 
     #surf_array_background =  pygame.surfarray.pixels2d(background)
     #print(surf_array_background)
@@ -266,6 +278,7 @@ def main():
         #screen.blit(speed_test[timer_tick & 255], (0, 0))
 
         pygame.surfarray.blit_array(screen, array_texture[(screen_from_tunnel_x+(timer_tick//2)) % texture_width, screen_from_tunnel_y])
+        screen.blit(fond_noir, coord_fond_noir)
         pygame.display.flip()
 
         if (timer_tick+4000) % 5000 == 0:
