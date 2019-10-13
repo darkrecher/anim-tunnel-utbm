@@ -1,0 +1,83 @@
+@font-face {
+  font-family: 'IbmVga8';
+  src:  url('ibm_vga8.woff2') format('woff2');
+}
+
+canvas {
+  width: 800px;
+  height: 600px;
+}
+body {
+  background-color: #202020;
+  font-family: 'IbmVga8';
+  color: #E0E0E0;
+}
+
+a {
+  color: white;
+  text-decoration: none;
+}
+a:hover {
+  color: #B0B0B0;
+}
+h1 {
+  font-weight: normal;
+  font-size: 3em;
+  color: #FFFF00;
+  padding-top: 0.5em;
+  text-align: center;
+}
+
+.program-list {
+  font-size: 2em;
+}
+.program-list img {
+  width: 7em;
+  text-align: center;
+}
+.program-list td {
+  padding: 1em;
+}
+.program-list a div {
+  text-align: center;
+  padding-bottom: 0.5em;
+}
+
+.dosbox-container {
+  /* cochonnerie de CSS de daube. */
+  display: block !important;
+  width: 800px;
+  height: 600px;
+  margin: 0 auto;
+}
+.buttons {
+  margin: 0 auto 1.2em auto;
+  width: 10em;
+}
+.button-zoom {
+  cursor: pointer;
+  padding: 2.1em 0.8em 0.8em 0.8em;
+  background-color: #A0A0A0;
+  margin: 0 0.5em 0 0.5em;
+}
+.button-zoom img {
+  height: 2em;
+}
+
+.sourcecode {
+  padding: 1em;
+  background:#000080;
+}
+.sourcecode pre {
+  color:#FFFF00;
+  font-family:'IbmVga8';
+}
+.code-keyword {
+  color:#FFFFFF;
+}
+.code-comment {
+  color:#808080;
+}
+.code-assembler {
+  color:#00FFFF;
+}
