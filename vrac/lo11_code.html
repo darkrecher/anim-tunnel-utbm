@@ -1,0 +1,287 @@
+<html>
+
+<head>
+
+  <meta charset="utf-8">
+  <title>Réchèr : animations en Turbo Pascal dans un émulateur js-dos</title>
+  <link href="css_and_fonts/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body>
+
+<div class="sourcecode">
+
+<pre>
+
+
+unit Udescente;
+
+interface
+
+<span class="code-keyword">uses</span>
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  StdCtrls, Grids, Uremonter, ComCtrls, Spin;
+
+<span class="code-keyword">type</span>
+  TRetourForm = class(TForm)
+    StatisticGrid: TStringGrid;
+    Retour: TButton;
+    ProgressBar: TProgressBar;
+    Patientez: TLabel;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    Label10: TLabel;
+    SpinNbrTries: TSpinEdit;
+    SpinGeneLength: TSpinEdit;
+    Label11: TLabel;
+    Label12: TLabel;
+    Label13: TLabel;
+    GeneType: TLabel;
+    <span class="code-keyword">procedure</span> RetourClick(Sender: TObject);
+    <span class="code-keyword">procedure</span> FormShow(Sender: TObject);
+    <span class="code-keyword">procedure</span> EditessaisExit(Sender: TObject);
+
+    <span class="code-keyword">procedure</span> EditsizeExit(Sender: TObject);
+    <span class="code-keyword">procedure</span> SpinNbrTriesExit(Sender: TObject);
+    <span class="code-keyword">procedure</span> SpinGeneLengthExit(Sender: TObject);
+
+
+
+  private
+    <span class="code-comment">{ Déclarations privées }</span>
+    NbrEssais,GeneSize:LongInt;
+    ProbaCoherent:Boolean;
+    PresentStats:<span class="code-keyword">Array</span>[0..999] <span class="code-keyword">of</span> ProbaTab;
+    CumuledProba,PresentMoyenne:ProbaTab;
+    <span class="code-comment">{GeneSize represente la taille du gene en dinucleotide!!
+  donc il faut multiplier par deux pour avoir la taille en nucleotide}</span>
+    <span class="code-keyword">Function</span> StrToNucl(Nu:Char):Nucleo;
+    <span class="code-keyword">Function</span> Rassemble(Nu1,Nu2:Nucleo):Dinucleo;
+    <span class="code-keyword">Function</span> StrToDinucl(Dinu:String):Dinucleo;
+    <span class="code-keyword">Function</span> MakeCumuledProba(Proba:ProbaTab;<span class="code-keyword">var</span> CumuProba:ProbaTab):Boolean;
+    <span class="code-keyword">Procedure</span> GenerateGene(<span class="code-keyword">var</span> GeneChaine:String;CumuProba:ProbaTab);
+    <span class="code-keyword">Procedure</span> MuteGene(<span class="code-keyword">var</span> GeneChaine:String;Nbr:LongInt);
+    <span class="code-keyword">Procedure</span> CalculProba(GeneChaine:string;<span class="code-keyword">var</span> Proba:ProbaTab);
+    <span class="code-keyword">Procedure</span> AfficheTab(Values:ProbaTab;Col:Byte);
+  public
+    <span class="code-comment">{ Déclarations publiques }</span>
+
+  <span class="code-keyword">end</span>;
+
+
+<span class="code-keyword">var</span>
+  RetourForm: TRetourForm;
+
+implementation
+
+<span class="code-comment">{$R *.DFM}</span>
+
+<span class="code-keyword">Function</span> TRetourForm.StrToNucl(Nu:Char):Nucleo;
+<span class="code-keyword">begin</span>
+  <span class="code-keyword">Case</span> Nu <span class="code-keyword">of</span>
+    'A':StrToNucl:=A;
+    'C':StrToNucl:=C;
+    'G':StrToNucl:=G;
+    'T':StrToNucl:=T;
+  <span class="code-keyword">end</span>;
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Function</span> TRetourForm.Rassemble(Nu1,Nu2:Nucleo):Dinucleo;
+<span class="code-keyword">begin</span>
+  Rassemble:=Dinucleo(Ord(Nu1)*4+Ord(Nu2));
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Function</span> TRetourForm.StrToDinucl(Dinu:String):Dinucleo;
+<span class="code-keyword">begin</span>
+  <span class="code-keyword">if</span> Length(Dinu)=2 <span class="code-keyword">then</span> StrToDinucl:=Rassemble(StrToNucl(Dinu[1]),StrToNucl(Dinu[2]));
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Function</span> TRetourForm.MakeCumuledProba(Proba:ProbaTab;<span class="code-keyword">var</span> CumuProba:ProbaTab):Boolean;
+<span class="code-keyword">var</span> i:Byte;Somme:Real;
+<span class="code-keyword">begin</span>
+  Somme:=0;
+  <span class="code-keyword">For</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> <span class="code-keyword">begin</span>
+    Somme:=Somme+Proba[i];
+    CumuProba[i]:=Somme;
+  <span class="code-keyword">end</span>;
+  MakeCumuledProba:=Abs(Somme-1)&lt;0.00000001;
+  CumuProba[15]:=1;
+  <span class="code-comment">//les imprécisions dû au calcul des probabilités passés font que leur somme n'est
+  //pas exactement égale à 1, il y a une erreur maximale de 10^-7</span>
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Procedure</span> TRetourForm.GenerateGene(<span class="code-keyword">var</span> GeneChaine:String;CumuProba:ProbaTab);
+<span class="code-keyword">Var</span> Choice:Real;i:Byte;k:LongInt;
+<span class="code-keyword">begin</span>
+  GeneChaine:='';
+  <span class="code-keyword">for</span> k:=0 <span class="code-keyword">to</span> GeneSize-1 <span class="code-keyword">do</span> <span class="code-keyword">begin</span>
+    Choice:=Random;
+    i:=1;
+    <span class="code-keyword">if</span> Choice&lt;=CumuProba[0] <span class="code-keyword">then</span> i:=0 <span class="code-keyword">else</span> <span class="code-keyword">While</span> (i&lt;=15) <span class="code-keyword">and</span>
+    <span class="code-keyword">not</span>((Choice&gt;CumuProba[i-1]) <span class="code-keyword">and</span> (Choice&lt;=CumuProba[i])) <span class="code-keyword">do</span> Inc(i);
+    GeneChaine:=GeneChaine+StrDinucleo[i];
+  <span class="code-keyword">end</span>;
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Procedure</span> TRetourForm.MuteGene(<span class="code-keyword">var</span> GeneChaine:String;Nbr:LongInt);
+<span class="code-keyword">var</span> i,NuclToMute:LongInt;Choice:Byte;
+<span class="code-keyword">begin</span>
+  <span class="code-keyword">if</span> Length(GeneChaine)=GeneSize*2 <span class="code-keyword">then</span> <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> Nbr-1 <span class="code-keyword">do</span>
+  <span class="code-keyword">begin</span>
+    NuclToMute:=Random(GeneSize*2)+1;
+    Choice:=Random(3);
+    <span class="code-keyword">Case</span> Choice <span class="code-keyword">of</span>
+      0:<span class="code-keyword">if</span> GeneChaine[NuclToMute]='A' <span class="code-keyword">then</span> GeneChaine[NuclToMute]:='C' <span class="code-keyword">else</span> GeneChaine[NuclToMute]:='A';
+      1:<span class="code-keyword">if</span> (GeneChaine[NuclToMute]='C') or (GeneChaine[NuclToMute]='A')
+      <span class="code-keyword">then</span> GeneChaine[NuclToMute]:='G' <span class="code-keyword">else</span> GeneChaine[NuclToMute]:='C';
+      2:<span class="code-keyword">if</span> GeneChaine[NuclToMute]='T' <span class="code-keyword">then</span> GeneChaine[NuclToMute]:='G' <span class="code-keyword">else</span> GeneChaine[NuclToMute]:='T';
+    <span class="code-keyword">end</span>;
+  <span class="code-keyword">end</span>;
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Procedure</span> TRetourForm.CalculProba(GeneChaine:string;<span class="code-keyword">var</span> Proba:ProbaTab);
+<span class="code-keyword">var</span> i:LongInt;DinuclToIncrease:Dinucleo;
+<span class="code-keyword">begin</span>
+  <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> Proba[i]:=0;
+  <span class="code-keyword">for</span> i:=1 <span class="code-keyword">to</span> GeneSize <span class="code-keyword">do</span> <span class="code-keyword">begin</span>
+    DinuclToIncrease:=StrToDinucl(GeneChaine[i*2-1]+GeneChaine[i*2]);
+    Proba[Ord(DinuclToIncrease)]:=Proba[Ord(DinuclToIncrease)]+1;
+  <span class="code-keyword">end</span>;
+  <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> Proba[i]:=Proba[i]/GeneSize;
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">procedure</span> TRetourForm.FormShow(Sender: TObject);
+<span class="code-keyword">begin</span>
+  Randomize;
+  ProbaCoherent:=MakeCumuledProba(URemonter.ProbaPast,CumuledProba);
+  <span class="code-keyword">if</span> <span class="code-keyword">not</span>(ProbaCoherent) <span class="code-keyword">then</span> <span class="code-keyword">begin</span>
+    ShowMessage('Les probabilités trouvés par la remontée analytique sont incohérentes '+#13+
+    'le retour simulé est donc impossible. Le programme va être arrêté');
+    Application.Terminate;
+  <span class="code-keyword">end</span>;
+  NbrEssais:=5;
+  GeneSize:=50000;
+  GeneType.Caption:=NameGeneChoice;
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Function</span> RealToString(X:Real):String;
+<span class="code-keyword">var</span> S:String;
+<span class="code-keyword">begin</span>
+  Str(X:1:12,S);
+  <span class="code-keyword">While</span> S[Length(S)]='0' <span class="code-keyword">do</span> Delete(S,Length(S),1);
+  <span class="code-keyword">if</span> (S[Length(S)]='.') or (S[Length(S)]=',') <span class="code-keyword">then</span> Delete(S,Length(S),1) <span class="code-keyword">else</span>
+  <span class="code-keyword">if</span> X=0 <span class="code-keyword">then</span> S:='0';
+  RealToString:=S;
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Procedure</span> TRetourForm.AfficheTab(Values:ProbaTab;Col:Byte);
+<span class="code-keyword">var</span> i:Integer;
+<span class="code-keyword">begin</span>
+  <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> StatisticGrid.Cells[Col,i]:=RealToString(Values[i]);
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Function</span> Test(S:string;<span class="code-keyword">var</span> Nbr:LongInt;Min,Max:LongInt):Boolean;
+<span class="code-keyword">var</span> Resu:LongInt;Error:Integer;
+<span class="code-keyword">begin</span>
+  Val(S,Resu,Error);
+  <span class="code-keyword">if</span> Error=0 <span class="code-keyword">then</span> <span class="code-keyword">if</span> (Resu&lt;Min) or (Resu&gt;Max) <span class="code-keyword">then</span> Error:=666;
+  <span class="code-keyword">if</span> Error &lt;&gt; 0 <span class="code-keyword">then</span> ShowMessage('La valeur entrée n''est pas correcte.') <span class="code-keyword">else</span> Nbr:=Resu;
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Procedure</span> TRetourForm.EditessaisExit(Sender: TObject);
+<span class="code-keyword">begin</span>
+<span class="code-comment">{  if not(Test(EditEssais.Text,NbrEssais,1,1000)) then Text:=IntToStr(NbrEssais);}</span>
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">Procedure</span> TRetourForm.EditsizeExit(Sender: TObject);
+<span class="code-keyword">begin</span>
+ <span class="code-comment">{ if not(Test(Editsize.Text,GeneSize,5000,1000000000)) then Text:=IntToStr(GeneSize);}</span>
+<span class="code-keyword">end</span>;
+
+<span class="code-comment">{------------------------------------------------------------------------------}</span>
+
+<span class="code-keyword">procedure</span> TRetourForm.RetourClick(Sender: TObject);
+<span class="code-keyword">var</span> GeneStr:string;k:LongInt;i:Byte;Incertit,EcarType:Probatab;
+<span class="code-keyword">begin</span>
+  AfficheTab(ProbaPast,0);
+  Patientez.Visible:=True;
+  Patientez.Refresh;
+  ProgressBar.Visible:=True;
+  ProgressBar.Max:=NbrEssais;
+  ProgressBar.Position:=0;
+  <span class="code-keyword">for</span> k:=0 <span class="code-keyword">to</span> NbrEssais-1 <span class="code-keyword">do</span> <span class="code-keyword">begin</span>
+    GenerateGene(GeneStr,CumuledProba);
+    MuteGene(GeneStr,Round(GeneSize*YMax*2));
+    CalculProba(GeneStr,PresentStats[k]);
+    ProgressBar.Position:=k+1;
+  <span class="code-keyword">end</span>;
+  <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> <span class="code-keyword">begin</span>
+    PresentMoyenne[i]:=0;
+    EcarType[i]:=0;
+  <span class="code-keyword">end</span>;
+  <span class="code-keyword">for</span> k:=0 <span class="code-keyword">to</span> NbrEssais-1 <span class="code-keyword">do</span> <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> PresentMoyenne[i]:=PresentMoyenne[i]+PresentStats[k][i];
+  <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> PresentMoyenne[i]:=PresentMoyenne[i]/NbrEssais;
+  <span class="code-keyword">if</span> NbrEssais&gt;1 <span class="code-keyword">then</span> <span class="code-keyword">for</span> k:=0 <span class="code-keyword">to</span> NbrEssais-1 <span class="code-keyword">do</span> <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> Ecartype[i]:=EcarType[i]+Sqr(PresentMoyenne[i]-PresentStats[k][i]);
+  <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> Incertit[i]:=Abs(PresentMoyenne[i]-ConstPresent[i]);
+  <span class="code-keyword">if</span> NbrEssais&gt;1 <span class="code-keyword">then</span> <span class="code-keyword">for</span> i:=0 <span class="code-keyword">to</span> 15 <span class="code-keyword">do</span> EcarType[i]:=Sqrt(EcarType[i]/(NbrEssais-1));
+  Patientez.Visible:=False;
+  ProgressBar.Visible:=False;
+  AfficheTab(PresentMoyenne,1);
+  <span class="code-keyword">if</span> NbrEssais&gt;1 <span class="code-keyword">then</span> AfficheTab(EcarType,2);
+  AffichetaB(ConstPresent,3);
+  AfficheTab(Incertit,4);
+<span class="code-keyword">end</span>;
+
+
+
+<span class="code-keyword">procedure</span> TRetourForm.SpinNbrTriesExit(Sender: TObject);
+<span class="code-keyword">begin</span>
+  NbrEssais:=SpinNbrTries.Value;
+<span class="code-keyword">end</span>;
+
+<span class="code-keyword">procedure</span> TRetourForm.SpinGeneLengthExit(Sender: TObject);
+<span class="code-keyword">begin</span>
+  GeneSize:=SpinGeneLength.Value;
+<span class="code-keyword">end</span>;
+
+<span class="code-keyword">end</span>.
+
+</pre>
+
+</div>
+
+</body>
+
+</html>
