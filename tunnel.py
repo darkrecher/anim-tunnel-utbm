@@ -17,6 +17,15 @@ screen_size_y = 480
 tunnel_diameter = 300
 dist_focale = 100
 
+# Liste des sons. Sous-tuple de 3 éléments :
+#  - nom du fichier .wav
+#  - durée du son (en secondes)
+#  - date (en tick de jeu) à laquelle il faut le jouer
+ALL_SOUNDS = (
+    ("pere200_1", 7.561, 4000),
+    ("dechaine_les_enfers", 2.337, 2000),
+)
+
 
 def load_image(name, colorkey=None, use_alpha=False):
 
@@ -68,6 +77,18 @@ def tex_coord_from_screen_coords(pix_x, pix_y, texture_width, texture_height):
     return (tex_x, tex_y)
 
 
+def load_sounds():
+    all_sounds = [
+        (
+            date_play,
+            pygame.mixer.Sound(os.path.join("audio", sound_name+".wav")),
+        ) for sound_name, duration, date_play
+        in ALL_SOUNDS
+    ]
+    all_sounds.sort(key=lambda x:x[0])
+    return all_sounds
+
+
 def main():
 
     # Initialize Everything
@@ -77,7 +98,8 @@ def main():
     pygame.display.set_caption("Tunnel 3D")
     pygame.mouse.set_visible(0)
 
-    snd_pere_200_1 = pygame.mixer.Sound(os.path.join("audio", "pere200_1.wav"))
+    all_sounds = load_sounds()
+    print(all_sounds)
 
     texture, texture_rect = load_image("texture.png")
     texture_width = texture_rect.w
@@ -136,6 +158,9 @@ def main():
                 if event.key == pygame.locals.K_SPACE:
                     pause = not pause
 
+        # TODO : c'est un peu à l'arrache tout ça. Faudrait des constantes
+        # pour configurer plus clairement la vitesse d'avancée du tunnel
+        # et les dates de jeu des sons.
         if not pause:
             timer_tick += 10
 
@@ -149,9 +174,9 @@ def main():
         screen.blit(fond_noir, coord_fond_noir)
         pygame.display.flip()
 
-        # TODO : bon, ceci est dégeux, mais on est au courant.
-        if (timer_tick + 4000) % 5000 == 0:
-            snd_pere_200_1.play()
+        while all_sounds and all_sounds[0][0] < timer_tick:
+            date_play, current_sound = all_sounds.pop(0)
+            current_sound.play()
 
     pygame.quit()
 
