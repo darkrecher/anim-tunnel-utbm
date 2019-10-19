@@ -21,12 +21,14 @@ dist_focale = 100
 #  - nom du fichier .wav
 #  - durée du son (en secondes)
 #  - date (en tick de jeu) à laquelle il faut le jouer
+#  - facteur de volume
 ALL_SOUNDS = (
-    ("partout_univers", 1.916, 50),
-    ("pere200_1", 7.561, 600),
-    ("dechaine_les_enfers", 2.337, 200),
-    ("tu_n_a_pas_eu_tes_bn", 2.224, 350),
-    ("morceaux_utbm", 9.954, 1950),
+    ("Synthesia_La_Soupe_Aux_Choux_theme.ogg", 123456, 100, 0.5),
+    ("partout_univers.wav", 1.916, 5, 1),
+    ("pere200_1.wav", 7.561, 600, 1),
+    ("dechaine_les_enfers.wav", 2.337, 220, 1),
+    ("tu_n_a_pas_eu_tes_bn.wav", 2.224, 1000, 1),
+    ("morceaux_utbm.wav", 9.954, 1950, 1),
 )
 
 
@@ -81,13 +83,14 @@ def tex_coord_from_screen_coords(pix_x, pix_y, texture_width, texture_height):
 
 
 def load_sounds():
-    all_sounds = [
-        (
-            date_play,
-            pygame.mixer.Sound(os.path.join("audio", sound_name+".wav")),
-        ) for sound_name, duration, date_play
-        in ALL_SOUNDS
-    ]
+    all_sounds = []
+    for sound_name, duration, date_play, volume_factor in ALL_SOUNDS:
+        sound = pygame.mixer.Sound(os.path.join("audio", sound_name))
+        if volume_factor != 1:
+            volume = sound.get_volume()
+            print(volume)
+            sound.set_volume(volume_factor * volume)
+        all_sounds.append((date_play, sound))
     all_sounds.sort(key=lambda x:x[0])
     return all_sounds
 
