@@ -23,12 +23,12 @@ dist_focale = 100
 #  - date (en tick de jeu) à laquelle il faut le jouer
 #  - facteur de volume
 ALL_SOUNDS = (
-    ("Synthesia_La_Soupe_Aux_Choux_theme.ogg", 123456, 100, 0.5),
     ("partout_univers.wav", 1.916, 5, 1),
+    ("la_boheme.ogg", 4.789, 240, 1),
     ("pere200_1.wav", 7.561, 600, 1),
-    ("dechaine_les_enfers.wav", 2.337, 220, 1),
+    ("dechaine_les_enfers.wav", 2.337, 440, 1),
     ("tu_n_a_pas_eu_tes_bn.wav", 2.224, 1000, 1),
-    ("morceaux_utbm.wav", 9.954, 1950, 1),
+    ("morceaux_utbm.wav", 9.954, 1890, 1),
 )
 
 
@@ -74,7 +74,7 @@ def tex_coord_from_screen_coords(pix_x, pix_y, texture_width, texture_height):
         angle, cylinder_z = cylinder_coords_from_screen_coords(pix_x, pix_y)
     except ValueError:
         return (0, 0)
-    tex_x = int(cylinder_z % texture_width)
+    tex_x = min(int(cylinder_z), texture_width)
     tex_y = int(((angle + math.pi) * (texture_height - 1)) / (2 * math.pi))
     # on décale tout de un cinquième, pour que le raccord moche entre
     # le haut et le bas de l'image ne soit pas pil poil sur la partie gauche du tunnel.
@@ -105,7 +105,6 @@ def main():
     pygame.mouse.set_visible(0)
 
     all_sounds = load_sounds()
-    print(all_sounds)
 
     texture, texture_rect = load_image("texture.png")
     texture_width = texture_rect.w
@@ -127,6 +126,7 @@ def main():
     # dans un int 32 bits, ça va péter. Mais franchement osef.
     screen_from_tunnel_x = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
     screen_from_tunnel_y = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
+    screen_from_tunnel_x_lim = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
 
     for x in range(screen_size_x):
         for y in range(screen_size_y):
@@ -135,6 +135,7 @@ def main():
             )
             screen_from_tunnel_x[x, y] = tex_coords[0]
             screen_from_tunnel_y[x, y] = tex_coords[1]
+            screen_from_tunnel_x_lim[x, y] = texture_width - 1
 
     # TODO : duplicate code avec la main loop. De plus, j'affiche pas le fond noir.
     # Bref, beurk, à homogénéiser.
@@ -149,6 +150,10 @@ def main():
     clock = pygame.time.Clock()
     going = True
     pause = False
+
+    # Déclenchement de la musique de fond.
+    pygame.mixer.music.load("audio\\Synthesia_La_Soupe_Aux_Choux_theme.ogg")
+    pygame.mixer.music.set_volume(0.4)
 
     while going:
 
@@ -173,7 +178,7 @@ def main():
         pygame.surfarray.blit_array(
             screen,
             array_texture[
-                (screen_from_tunnel_x + (timer_tick * 4)) % texture_width,
+                numpy.minimum(screen_from_tunnel_x + (timer_tick * 4), screen_from_tunnel_x_lim),
                 screen_from_tunnel_y,
             ],
         )
@@ -183,6 +188,13 @@ def main():
         while all_sounds and all_sounds[0][0] < timer_tick:
             date_play, current_sound = all_sounds.pop(0)
             current_sound.play()
+
+        # TODO test. Et ajouter une constante pour ces nombres, please.
+        if timer_tick == 100:
+            pygame.mixer.music.play()
+
+        if timer_tick == 1850:
+            pygame.mixer.music.fadeout(500)
 
     pygame.quit()
 
