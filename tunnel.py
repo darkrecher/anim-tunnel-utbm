@@ -22,8 +22,11 @@ dist_focale = 100
 #  - durée du son (en secondes)
 #  - date (en tick de jeu) à laquelle il faut le jouer
 ALL_SOUNDS = (
-    ("pere200_1", 7.561, 4000),
-    ("dechaine_les_enfers", 2.337, 2000),
+    ("partout_univers", 1.916, 50),
+    ("pere200_1", 7.561, 600),
+    ("dechaine_les_enfers", 2.337, 200),
+    ("tu_n_a_pas_eu_tes_bn", 2.224, 350),
+    ("morceaux_utbm", 9.954, 1950),
 )
 
 
@@ -162,12 +165,12 @@ def main():
         # pour configurer plus clairement la vitesse d'avancée du tunnel
         # et les dates de jeu des sons.
         if not pause:
-            timer_tick += 10
+            timer_tick += 1
 
         pygame.surfarray.blit_array(
             screen,
             array_texture[
-                (screen_from_tunnel_x + (timer_tick // 2)) % texture_width,
+                (screen_from_tunnel_x + (timer_tick * 4)) % texture_width,
                 screen_from_tunnel_y,
             ],
         )
