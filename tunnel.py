@@ -23,12 +23,17 @@ dist_focale = 100
 #  - date (en tick de jeu) à laquelle il faut le jouer
 #  - facteur de volume
 ALL_SOUNDS = (
-    ("partout_univers.wav", 1.916, 5, 1),
-    ("la_boheme.ogg", 4.789, 240, 1),
-    ("pere200_1.wav", 7.561, 600, 1),
-    ("dechaine_les_enfers.wav", 2.337, 440, 1),
-    ("tu_n_a_pas_eu_tes_bn.wav", 2.224, 1000, 1),
-    ("morceaux_utbm.wav", 9.954, 1890, 1),
+    ("partout_univers.wav", 1.916, 5, 3),
+    ("vous_elite.ogg", 2.435, 210, 3),
+    ("dechaine_les_enfers.wav", 2.337, 360, 3),
+    ("bar_ouvert.ogg", 1.488, 510, 0.5),
+    ("pere200_1.wav", 7.561, 590, 3),
+    ("eni_ou_ipse.ogg", 2.363, 990, 3),
+    ("tu_n_a_pas_eu_tes_bn.wav", 2.224, 1150, 3),
+    ("vous_nuls.ogg", 2.453, 1300, 3),
+    ("pas_uv_pas_deutec.ogg", 4.058, 1430, 3),
+    ("la_boheme.ogg", 4.789, 1640, 3),
+    ("morceaux_utbm.wav", 9.954, 1900, 3),
 )
 
 
@@ -153,7 +158,7 @@ def main():
 
     # Déclenchement de la musique de fond.
     pygame.mixer.music.load("audio\\Synthesia_La_Soupe_Aux_Choux_theme.ogg")
-    pygame.mixer.music.set_volume(0.4)
+    pygame.mixer.music.set_volume(0.5)
 
     while going:
 
@@ -193,7 +198,7 @@ def main():
         if timer_tick == 100:
             pygame.mixer.music.play()
 
-        if timer_tick == 1850:
+        if timer_tick == 1870:
             pygame.mixer.music.fadeout(500)
 
     pygame.quit()
