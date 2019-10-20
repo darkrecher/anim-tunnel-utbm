@@ -23,17 +23,17 @@ dist_focale = 100
 #  - date (en tick de jeu) à laquelle il faut le jouer
 #  - facteur de volume
 ALL_SOUNDS = (
-    ("partout_univers.wav", 1.916, 5, 3),
-    ("vous_elite.ogg", 2.435, 210, 3),
-    ("dechaine_les_enfers.wav", 2.337, 360, 3),
-    ("bar_ouvert.ogg", 1.488, 510, 0.5),
-    ("pere200_1.wav", 7.561, 590, 3),
-    ("eni_ou_ipse.ogg", 2.363, 990, 3),
-    ("tu_n_a_pas_eu_tes_bn.wav", 2.224, 1150, 3),
-    ("vous_nuls.ogg", 2.453, 1300, 3),
-    ("pas_uv_pas_deutec.ogg", 4.058, 1430, 3),
-    ("la_boheme.ogg", 4.789, 1640, 3),
-    ("morceaux_utbm.wav", 9.954, 1900, 3),
+    ("partout_univers", 1.916, 5, 1),
+    ("vous_elite", 2.435, 210, 10000),
+    ("dechaine_les_enfers", 2.337, 360, 1),
+    ("bar_ouvert", 1.488, 510, 0.5),
+    ("pere200", 7.561, 590, 1),
+    ("eni_ou_ipse", 2.363, 990, 1),
+    ("tu_n_a_pas_eu_tes_bn", 2.224, 1150, 1),
+    ("vous_nuls", 2.453, 1300, 1),
+    ("pas_uv_pas_deutec", 4.058, 1430, 1),
+    ("la_boheme", 4.789, 1640, 1),
+    ("morceaux_utbm", 9.954, 1900, 1),
 )
 
 
@@ -90,11 +90,9 @@ def tex_coord_from_screen_coords(pix_x, pix_y, texture_width, texture_height):
 def load_sounds():
     all_sounds = []
     for sound_name, duration, date_play, volume_factor in ALL_SOUNDS:
-        sound = pygame.mixer.Sound(os.path.join("audio", sound_name))
+        sound = pygame.mixer.Sound(os.path.join("audio", sound_name + ".ogg"))
         if volume_factor != 1:
-            volume = sound.get_volume()
-            print(volume)
-            sound.set_volume(volume_factor * volume)
+            sound.set_volume(volume_factor)
         all_sounds.append((date_play, sound))
     all_sounds.sort(key=lambda x:x[0])
     return all_sounds
@@ -158,7 +156,7 @@ def main():
 
     # Déclenchement de la musique de fond.
     pygame.mixer.music.load("audio\\Synthesia_La_Soupe_Aux_Choux_theme.ogg")
-    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.set_volume(0.95)
 
     while going:
 
