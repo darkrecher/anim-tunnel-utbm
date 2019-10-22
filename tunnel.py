@@ -56,6 +56,7 @@ def load_image(name, colorkey=None, use_alpha=False):
     if colorkey is not None:
         if colorkey is -1:
             colorkey = image.get_at((0, 0))
+        # TODO : ça va planter, ça. On n'a pas de RLEACCEL.
         image.set_colorkey(colorkey, RLEACCEL)
 
     return image, image.get_rect()
@@ -119,10 +120,10 @@ def main():
 
     timer_tick = 0
 
-    fond_noir, fond_noir_rect = load_image("fond_noir.png", use_alpha=True)
-    coord_fond_noir = (
-        (screen_size_x - fond_noir_rect.w) // 2,
-        (screen_size_y - fond_noir_rect.h) // 2,
+    black_circle, black_circle_rect = load_image("fond_noir.png", use_alpha=True)
+    coord_black_circle = (
+        (screen_size_x - black_circle_rect.w) // 2,
+        (screen_size_y - black_circle_rect.h) // 2,
     )
 
     # Si la taille (width ou height) de l'image de texture ne tient pas
@@ -139,6 +140,25 @@ def main():
             screen_from_tunnel_x[x, y] = tex_coords[0]
             screen_from_tunnel_y[x, y] = tex_coords[1]
             screen_from_tunnel_x_lim[x, y] = texture_width - 1
+
+    white_circle = pygame.Surface((screen_size_x, screen_size_y), flags=pygame.SRCALPHA)
+    white_circle.fill((255, 255, 255))
+    white_circle_alpha_source = numpy.zeros((screen_size_x, screen_size_y), dtype="u1")
+    # TODO : juste pour tester
+    #max_circle = screen_size_x**2 + screen_size_y**2
+    max_circle = (screen_size_y//2)**2
+    #max_circle = 10000
+    for x in range(screen_size_x):
+        for y in range(screen_size_y):
+            #white_circle_alpha[x, y] = 255 if (x+y)%2 else 0
+            val = 255 - (((x-screen_size_x//2)**2 + (y-screen_size_y//2)**2) * 255) / max_circle
+            if val > 255: val = 255
+            if val < 0: val = 0
+            white_circle_alpha_source[x, y] = val
+
+    white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
+    white_circle_alpha[:] = white_circle_alpha_source + 50
+    del white_circle_alpha
 
     # TODO : duplicate code avec la main loop. De plus, j'affiche pas le fond noir.
     # Bref, beurk, à homogénéiser.
@@ -185,7 +205,9 @@ def main():
                 screen_from_tunnel_y,
             ],
         )
-        screen.blit(fond_noir, coord_fond_noir)
+        screen.blit(black_circle, coord_black_circle)
+        # TODO : enlever cette ligne pour supprimer le test moche.
+        screen.blit(white_circle, (0, 0))
         pygame.display.flip()
 
         while all_sounds and all_sounds[0][0] < timer_tick:
@@ -198,6 +220,11 @@ def main():
 
         if timer_tick == 1870:
             pygame.mixer.music.fadeout(500)
+
+        # TODO : test de rapidité. plutôt OK. Du coup, l'anim est moche, mais osef c'est provisoire.
+        white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
+        white_circle_alpha[:] = white_circle_alpha_source + (timer_tick//2)
+        del white_circle_alpha
 
     pygame.quit()
 
