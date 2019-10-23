@@ -17,6 +17,8 @@ screen_size_y = 480
 tunnel_diameter = 300
 dist_focale = 100
 
+time_show_white_circle = 2000
+
 # Liste des sons. Sous-tuple de 3 éléments :
 #  - nom du fichier .wav
 #  - durée du son (en secondes)
@@ -126,6 +128,7 @@ def main():
         (screen_size_y - black_circle_rect.h) // 2,
     )
 
+    print("precalc tunnel mapping")
     # Si la taille (width ou height) de l'image de texture ne tient pas
     # dans un int 32 bits, ça va péter. Mais franchement osef.
     screen_from_tunnel_x = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
@@ -141,19 +144,35 @@ def main():
             screen_from_tunnel_y[x, y] = tex_coords[1]
             screen_from_tunnel_x_lim[x, y] = texture_width - 1
 
+    print("precalc circle alpha source")
     white_circle = pygame.Surface((screen_size_x, screen_size_y), flags=pygame.SRCALPHA)
     white_circle.fill((255, 255, 255))
     # Matrice contenant la distance (en pixels) par rapport au centre de l'écran.
     white_circle_alpha_source = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
-    white_circle_temp = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
     for x in range(screen_size_x):
         for y in range(screen_size_y):
             val = ((x-screen_size_x//2)**2 + (y-screen_size_y//2)**2)**0.5
             white_circle_alpha_source[x, y] = val
 
-    white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
-    white_circle_alpha[:] = white_circle_alpha_source + 50
-    del white_circle_alpha
+    # Précalcul de la transparence du cercle blanc qui apparaît à la fin
+    print("precalc white_circle_alphas")
+    white_circle_alphas = []
+    white_circle_temp = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
+    min_circles = [0] * 50 + [ int(r**1.2) for r in range(150) ]
+    max_circles = [ 1+int(r**1.2) for r in range(200) ]
+
+    for min_dist, max_dist in zip(min_circles, max_circles):
+        #white_circle_temp[:] = 255-((white_circle_alpha_source-50)*255)//150
+        #white_circle_temp[white_circle_alpha_source < 50] = 255
+        #white_circle_temp[white_circle_alpha_source >= 200] = 0
+        #min_dist = circle_index*2
+        #max_dist = min_dist+100
+        white_circle_temp[:] = 255-((white_circle_alpha_source-min_dist)*255)//(max_dist-min_dist)
+        white_circle_temp[white_circle_alpha_source < min_dist] = 255
+        white_circle_temp[white_circle_alpha_source >= max_dist] = 0
+        white_circle_next = numpy.zeros((screen_size_x, screen_size_y), dtype="u1")
+        white_circle_next[:] = white_circle_temp
+        white_circle_alphas.append(white_circle_next)
 
     # TODO : duplicate code avec la main loop. De plus, j'affiche pas le fond noir.
     # Bref, beurk, à homogénéiser.
@@ -172,6 +191,8 @@ def main():
     # Déclenchement de la musique de fond.
     pygame.mixer.music.load("audio\\Synthesia_La_Soupe_Aux_Choux_theme.ogg")
     pygame.mixer.music.set_volume(0.95)
+
+    print("start loop")
 
     while going:
 
@@ -201,8 +222,16 @@ def main():
             ],
         )
         screen.blit(black_circle, coord_black_circle)
-        # TODO : enlever cette ligne pour supprimer le test moche.
-        screen.blit(white_circle, (0, 0))
+
+        # Affichage de la lumière finale.
+        if timer_tick > time_show_white_circle:
+            circle_index = timer_tick - time_show_white_circle
+            if circle_index < len(white_circle_alphas):
+                white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
+                white_circle_alpha[:] = white_circle_alphas[circle_index]
+                del white_circle_alpha
+            screen.blit(white_circle, (0, 0))
+
         pygame.display.flip()
 
         while all_sounds and all_sounds[0][0] < timer_tick:
@@ -217,12 +246,18 @@ def main():
             pygame.mixer.music.fadeout(500)
 
         # TODO : test de rapidité. plutôt OK. Du coup, l'anim est moche, mais osef c'est provisoire.
-        white_circle_temp[:] = white_circle_alpha_source
-        white_circle_temp[white_circle_alpha_source > timer_tick*1.1] = 0
-        white_circle_temp[white_circle_alpha_source <= timer_tick*1.1] = 255
-        white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
-        white_circle_alpha[:] = white_circle_temp
-        del white_circle_alpha
+        #white_circle_temp[:] = 255-((white_circle_alpha_source-50)*255)//150
+        #white_circle_temp[white_circle_alpha_source < 50] = 255
+        #white_circle_temp[white_circle_alpha_source >= 200] = 0
+
+        #white_circle_temp[white_circle_alpha_source > timer_tick*1.5] = 0
+        #white_circle_temp[white_circle_alpha_source <= timer_tick*1.1] = 255
+        ##white_circle_temp[(white_circle_alpha_source > timer_tick*1.1) and (white_circle_alpha_source < timer_tick*1.5)] -= timer_tick*1.1
+        #white_circle_temp[numpy.all([
+        #    white_circle_alpha_source > timer_tick*1.1,
+        #    white_circle_alpha_source < timer_tick*1.5])
+        #] = (white_circle_alpha_source - timer_tick*1.1)*255 / (timer_tick*1.5 - timer_tick*1.1)
+
 
     pygame.quit()
 
