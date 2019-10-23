@@ -143,17 +143,12 @@ def main():
 
     white_circle = pygame.Surface((screen_size_x, screen_size_y), flags=pygame.SRCALPHA)
     white_circle.fill((255, 255, 255))
-    white_circle_alpha_source = numpy.zeros((screen_size_x, screen_size_y), dtype="u1")
-    # TODO : juste pour tester
-    #max_circle = screen_size_x**2 + screen_size_y**2
-    max_circle = (screen_size_y//2)**2
-    #max_circle = 10000
+    # Matrice contenant la distance (en pixels) par rapport au centre de l'écran.
+    white_circle_alpha_source = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
+    white_circle_temp = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
     for x in range(screen_size_x):
         for y in range(screen_size_y):
-            #white_circle_alpha[x, y] = 255 if (x+y)%2 else 0
-            val = 255 - (((x-screen_size_x//2)**2 + (y-screen_size_y//2)**2) * 255) / max_circle
-            if val > 255: val = 255
-            if val < 0: val = 0
+            val = ((x-screen_size_x//2)**2 + (y-screen_size_y//2)**2)**0.5
             white_circle_alpha_source[x, y] = val
 
     white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
@@ -214,7 +209,7 @@ def main():
             date_play, current_sound = all_sounds.pop(0)
             current_sound.play()
 
-        # TODO test. Et ajouter une constante pour ces nombres, please.
+        # TODO : ajouter une constante pour ces nombres, please.
         if timer_tick == 100:
             pygame.mixer.music.play()
 
@@ -222,8 +217,11 @@ def main():
             pygame.mixer.music.fadeout(500)
 
         # TODO : test de rapidité. plutôt OK. Du coup, l'anim est moche, mais osef c'est provisoire.
+        white_circle_temp[:] = white_circle_alpha_source
+        white_circle_temp[white_circle_alpha_source > timer_tick*1.1] = 0
+        white_circle_temp[white_circle_alpha_source <= timer_tick*1.1] = 255
         white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
-        white_circle_alpha[:] = white_circle_alpha_source + (timer_tick//2)
+        white_circle_alpha[:] = white_circle_temp
         del white_circle_alpha
 
     pygame.quit()
