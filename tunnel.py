@@ -106,9 +106,9 @@ class Boulette():
 
     DEG_TO_RAD_FACTOR = (2*math.pi) / 360
 
-    def __init__(self, boulette_imgs):
-        self.boulette_imgs = boulette_imgs
-        self.len_boulette_imgs = len(self.boulette_imgs)
+    def __init__(self, boulette_imgs_all):
+        self.boulette_imgs_all = boulette_imgs_all
+        self.len_boulette_imgs_rot = len(self.boulette_imgs_all[0])
         self.angle = 20.0
         self.dist = 0.0
         self.delta_angle = 0.0
@@ -117,16 +117,17 @@ class Boulette():
         self.delta_dist_lim = 0.5
         self.dist_min = 50
         self.dist_max = 100
+        self.main_img_counter = 0
 
     def change_polar_coords(self):
         # TODO : constantes, plize.
         accel_angle = random.randint(-50, 50) / 2000
         self.delta_angle += accel_angle
         if self.delta_angle < -self.delta_angle_lim:
-            self.delta_angle -= accel_angle * 50
+            self.delta_angle -= accel_angle * 25
             #print("lim down", accel_angle, self.delta_angle, self.angle)
         if self.delta_angle > self.delta_angle_lim:
-            self.delta_angle -= accel_angle * 50
+            self.delta_angle -= accel_angle * 25
             #print("lim up", accel_angle, self.delta_angle, self.angle)
         self.angle += self.delta_angle
         if self.angle < 0:
@@ -151,6 +152,11 @@ class Boulette():
         #print(accel_angle, self.delta_angle, self.angle)
         #print(accel_dist, self.delta_dist, self.dist)
 
+        self.main_img_counter += 1
+        # TODO : constante, plize.
+        if self.main_img_counter >= len(self.boulette_imgs_all) * 50:
+            self.main_img_counter = 0
+
     def get_cartez_coords(self):
         return (
             int(screen_size_x//2 + math.cos(self.angle*Boulette.DEG_TO_RAD_FACTOR)*self.dist),
@@ -158,16 +164,19 @@ class Boulette():
         )
 
     def get_img_and_coords(self):
-        # TODO : décalage de la moitié.
-        index_boulette_rotation = int(((self.angle+7.5) / 360) * self.len_boulette_imgs) % self.len_boulette_imgs
-        index_boulette_rotation = self.len_boulette_imgs - index_boulette_rotation - 1
-        index_boulette_rotation += self.len_boulette_imgs//4
-        if index_boulette_rotation >= self.len_boulette_imgs:
-            index_boulette_rotation -= self.len_boulette_imgs
+
+        # TODO : constante, plize.
+        boulette_imgs_current = self.boulette_imgs_all[self.main_img_counter//50]
+
+        index_boulette_rotation = int(((self.angle+7.5) / 360) * self.len_boulette_imgs_rot) % self.len_boulette_imgs_rot
+        index_boulette_rotation = self.len_boulette_imgs_rot - index_boulette_rotation - 1
+        index_boulette_rotation += self.len_boulette_imgs_rot//4
+        if index_boulette_rotation >= self.len_boulette_imgs_rot:
+            index_boulette_rotation -= self.len_boulette_imgs_rot
 
         # TODO : re constantes, plize.
         scale_factor = 0.1 + self.dist / 400
-        boulette_rotated, rect_rotated, coord_hotpoint = self.boulette_imgs[
+        boulette_rotated, rect_rotated, coord_hotpoint = boulette_imgs_current[
             index_boulette_rotation
         ]
         boulette_scaled = pygame.transform.scale(
@@ -210,13 +219,16 @@ def main():
         (screen_size_y - black_circle_rect.h) // 2,
     )
 
-    img_boulette, boul_rect = load_image("boulette_01.png", use_alpha=True)
-    boul_rect = pygame.Rect(0, 0, int(boul_rect.w*0.25), int(boul_rect.h*0.25))
-    boulette_scaled = pygame.transform.scale(
-        img_boulette,
-        (boul_rect.w, boul_rect.h),
-    )
+    img_boulette_originals = []
 
+    for img_index in range(1, 6):
+        img_boulette, boul_rect = load_image("boulette_0" + str(img_index) + ".png", use_alpha=True)
+        boul_rect = pygame.Rect(0, 0, int(boul_rect.w*0.25), int(boul_rect.h*0.25))
+        boulette_scaled = pygame.transform.scale(
+            img_boulette,
+            (boul_rect.w, boul_rect.h),
+        )
+        img_boulette_originals.append(boulette_scaled)
 
     print("precalc tunnel mapping")
     # Si la taille (width ou height) de l'image de texture ne tient pas
@@ -266,7 +278,6 @@ def main():
 
     print("precalc boulette rotations")
     # TODO : constantes pour le nombre d'image de boulette, et le step de rotation.
-    # TODO : (quand ce sera fait)
     # tuples imbriqués.
     # Chaque elem du tuple le plus haut représente l'une des 6 images possibles de la boulette de papier.
     # C'est un sous-tuple. Chaque elem de ce sous-tuple représente une image rotatée de la boulette.
@@ -274,19 +285,22 @@ def main():
     # Le premier elem du sous-sous-tuple est l'image elle-même.
     # Le deuxième est la taille de l'image.
     # Le troisième est le vecteur (x, y) de décalage.
-    boulette_imgs = []
-    for angle in range(0, 360, 15):
-        vect_center_to_middle_down = pygame.math.Vector2(0, boul_rect.h//2)
-        # Je sais pas pourquoi faut mettre "-angle" et pas "angle".
-        # Sûrement un truc compliqué de matheux.
-        vect_center_to_middle_down = vect_center_to_middle_down.rotate(-angle)
-        boulette_rotated = pygame.transform.rotate(boulette_scaled, angle)
-        rect_rotated = boulette_rotated.get_rect()
-        coord_hotpoint = (
-            -rect_rotated.w//2 - vect_center_to_middle_down.x,
-            -rect_rotated.h//2 - vect_center_to_middle_down.y
-        )
-        boulette_imgs.append((boulette_rotated, rect_rotated, coord_hotpoint))
+    boulette_imgs_all = []
+    for img_boulette_original in img_boulette_originals:
+        boulette_imgs = []
+        for angle in range(0, 360, 15):
+            vect_center_to_middle_down = pygame.math.Vector2(0, boul_rect.h//2)
+            # Je sais pas pourquoi faut mettre "-angle" et pas "angle".
+            # Sûrement un truc compliqué de matheux.
+            vect_center_to_middle_down = vect_center_to_middle_down.rotate(-angle)
+            boulette_rotated = pygame.transform.rotate(img_boulette_original, angle)
+            rect_rotated = boulette_rotated.get_rect()
+            coord_hotpoint = (
+                -rect_rotated.w//2 - vect_center_to_middle_down.x,
+                -rect_rotated.h//2 - vect_center_to_middle_down.y
+            )
+            boulette_imgs.append((boulette_rotated, rect_rotated, coord_hotpoint))
+        boulette_imgs_all.append(boulette_imgs)
 
     # TODO : duplicate code avec la main loop. De plus, j'affiche pas le fond noir.
     # Bref, beurk, à homogénéiser.
@@ -296,12 +310,13 @@ def main():
             (screen_from_tunnel_x + 10) % texture_width, screen_from_tunnel_y
         ],
     )
+    screen.blit(black_circle, coord_black_circle)
     pygame.display.flip()
 
     clock = pygame.time.Clock()
     going = True
     pause = False
-    boulette = Boulette(boulette_imgs)
+    boulette = Boulette(boulette_imgs_all)
 
     # Déclenchement de la musique de fond.
     pygame.mixer.music.load("audio\\Synthesia_La_Soupe_Aux_Choux_theme.ogg")
