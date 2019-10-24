@@ -1,4 +1,5 @@
 import os
+import time
 import math
 import random
 import numpy
@@ -124,10 +125,10 @@ class Boulette():
         accel_angle = random.randint(-50, 50) / 2000
         self.delta_angle += accel_angle
         if self.delta_angle < -self.delta_angle_lim:
-            self.delta_angle -= accel_angle * 25
+            self.delta_angle -= accel_angle * 45
             #print("lim down", accel_angle, self.delta_angle, self.angle)
         if self.delta_angle > self.delta_angle_lim:
-            self.delta_angle -= accel_angle * 25
+            self.delta_angle -= accel_angle * 45
             #print("lim up", accel_angle, self.delta_angle, self.angle)
         self.angle += self.delta_angle
         if self.angle < 0:
@@ -322,6 +323,12 @@ def main():
     pygame.mixer.music.load("audio\\Synthesia_La_Soupe_Aux_Choux_theme.ogg")
     pygame.mixer.music.set_volume(0.95)
 
+    seconds = 10
+    print("Ready. Balancer l'enregistrement dans %s secondes." % seconds)
+    while seconds:
+        print(seconds)
+        time.sleep(1)
+        seconds -= 1
     print("start loop")
 
     while going:
