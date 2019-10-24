@@ -106,7 +106,7 @@ def main():
     # Initialize Everything
     pygame.init()
     pygame.mixer.init()
-    screen = pygame.display.set_mode((screen_size_x, screen_size_y))
+    screen = pygame.display.set_mode((screen_size_x, screen_size_y), pygame.NOFRAME)
     pygame.display.set_caption("Tunnel 3D")
     pygame.mouse.set_visible(0)
 
@@ -127,6 +127,14 @@ def main():
         (screen_size_x - black_circle_rect.w) // 2,
         (screen_size_y - black_circle_rect.h) // 2,
     )
+
+    boulette, boul_rect = load_image("boulette_01.png", use_alpha=True)
+    boul_rect = pygame.Rect(0, 0, int(boul_rect.w*0.25), int(boul_rect.h*0.25))
+    boulette_scaled = pygame.transform.scale(
+        boulette,
+        (boul_rect.w, boul_rect.h),
+    )
+
 
     print("precalc tunnel mapping")
     # Si la taille (width ou height) de l'image de texture ne tient pas
@@ -173,6 +181,28 @@ def main():
         white_circle_next = numpy.zeros((screen_size_x, screen_size_y), dtype="u1")
         white_circle_next[:] = white_circle_temp
         white_circle_alphas.append(white_circle_next)
+
+    print("precalc boulette rotations")
+    # TODO : constantes pour le nombre d'image de boulette, et le step de rotation.
+    # TODO : (quand ce sera fait)
+    # tuples imbriqués.
+    # Chaque elem du tuple le plus haut représente l'une des 6 images possibles de la boulette de papier.
+    # C'est un sous-tuple. Chaque elem de ce sous-tuple représente une image rotatée de la boulette.
+    # Rotatée à 15 degrés, puis 30, 45, etc. Ce sont des sous-sous-tuple.
+    # Le premier elem du sous-sous-tuple est l'image elle-même. Le deuxième est le vecteur (x, y) de décalage.
+    boulette_imgs = []
+    for angle in range(0, 360, 15):
+        vect_center_to_middle_down = pygame.math.Vector2(0, boul_rect.h//2)
+        # Je sais pas pourquoi faut mettre "-angle" et pas "angle".
+        # Sûrement un truc compliqué de matheux.
+        vect_center_to_middle_down = vect_center_to_middle_down.rotate(-angle)
+        boulette_rotated = pygame.transform.rotate(boulette_scaled, angle)
+        rect_rotated = boulette_rotated.get_rect()
+        coord_hotpoint = (
+            -rect_rotated.w//2 - vect_center_to_middle_down.x,
+            -rect_rotated.h//2 - vect_center_to_middle_down.y
+        )
+        boulette_imgs.append((boulette_rotated, coord_hotpoint))
 
     # TODO : duplicate code avec la main loop. De plus, j'affiche pas le fond noir.
     # Bref, beurk, à homogénéiser.
@@ -221,6 +251,23 @@ def main():
                 screen_from_tunnel_y,
             ],
         )
+
+        # TODO : scaling.
+        #hot_point_boulette = pygame.math.Vector2(0, boul_rect.h//2)
+        #hot_point_boulette = hot_point_boulette.rotate(-timer_tick)
+        ##boulette_scaled = pygame.transform.scale(
+        ##    boulette,
+        ##    (int(boul_rect.w*(0.2+(timer_tick%200)/1000)), int(boul_rect.h*(0.2+(timer_tick%200)/1000)))
+        ##)
+        #boulette_rotated = pygame.transform.rotate(boulette_scaled, timer_tick)
+        #rect_rotated = boulette_rotated.get_rect()
+        ##screen.blit(boulette_rotated, (100-hot_point_boulette.x, 100-hot_point_boulette.y))
+        index_boulette_rotation = (timer_tick//30) % len(boulette_imgs)
+        boulette_rotated = boulette_imgs[index_boulette_rotation][0]
+        coord_hotpoint = boulette_imgs[index_boulette_rotation][1]
+        screen.blit(boulette_rotated, (100 + coord_hotpoint[0], 200 + coord_hotpoint[1]))
+        #screen.blit(boulette_rotated, (100-rect_rotated.w//2 - hot_point_boulette.x, 200-rect_rotated.h//2 - hot_point_boulette.y))
+
         screen.blit(black_circle, coord_black_circle)
 
         # Affichage de la lumière finale.
