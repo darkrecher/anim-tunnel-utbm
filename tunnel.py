@@ -1,3 +1,4 @@
+import sys
 import os
 import time
 import math
@@ -323,7 +324,11 @@ def main():
     pygame.mixer.music.load("audio\\Synthesia_La_Soupe_Aux_Choux_theme.ogg")
     pygame.mixer.music.set_volume(0.95)
 
-    seconds = 10
+    if len(sys.argv) > 1:
+        seconds = int(sys.argv[1])
+    else:
+        seconds = 10
+
     print("Ready. Balancer l'enregistrement dans %s secondes." % seconds)
     while seconds:
         print(seconds)
