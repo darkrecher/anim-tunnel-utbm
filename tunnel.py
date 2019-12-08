@@ -10,17 +10,22 @@ import pygame.surfarray
 import pygame.mixer
 from pygame.compat import geterror
 
+from code.black_circle import BlackCircle
 
+# TODO : in helpers
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 img_dir = os.path.join(main_dir, "img")
 
+# TODO : in helpers
 screen_size_x = 640
 screen_size_y = 480
 
 tunnel_diameter = 300
 dist_focale = 100
 
+# WIP
 time_show_white_circle = 2000
+#time_show_white_circle = 200
 
 # Liste des sons. Sous-tuple de 3 éléments :
 #  - nom du fichier .wav
@@ -42,6 +47,7 @@ ALL_SOUNDS = (
 )
 
 
+# TODO : in helpers
 def load_image(name, colorkey=None, use_alpha=False):
 
     if colorkey and use_alpha:
@@ -215,11 +221,7 @@ def main():
 
     timer_tick = 0
 
-    black_circle, black_circle_rect = load_image("fond_noir.png", use_alpha=True)
-    coord_black_circle = (
-        (screen_size_x - black_circle_rect.w) // 2,
-        (screen_size_y - black_circle_rect.h) // 2,
-    )
+    anim_objects = [ BlackCircle() ]
 
     img_boulette_originals = []
 
@@ -312,7 +314,7 @@ def main():
             (screen_from_tunnel_x + 10) % texture_width, screen_from_tunnel_y
         ],
     )
-    screen.blit(black_circle, coord_black_circle)
+
     pygame.display.flip()
 
     clock = pygame.time.Clock()
@@ -325,7 +327,9 @@ def main():
     pygame.mixer.music.set_volume(0.95)
 
     if len(sys.argv) > 1:
-        seconds = int(sys.argv[1])
+        # Ça va planter si on passe en paramètre une chaîne qui n'est pas convertible
+        # en int. Osef.
+        seconds = abs(int(sys.argv[1]))
     else:
         seconds = 10
 
@@ -369,7 +373,8 @@ def main():
         boulette_scaled, coord_img_left_up = boulette.get_img_and_coords()
         screen.blit(boulette_scaled, (coord_img_left_up[0], coord_img_left_up[1]))
 
-        screen.blit(black_circle, coord_black_circle)
+        for anim_object in anim_objects:
+            anim_object.make_loop_action(screen, timer_tick)
 
         # Affichage de la lumière finale.
         if timer_tick > time_show_white_circle:
