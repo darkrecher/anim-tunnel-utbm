@@ -11,6 +11,7 @@ import pygame.mixer
 from pygame.compat import geterror
 
 from code.black_circle import BlackCircle
+from code.white_circle_at_end import WhiteCircleAtEnd
 
 # TODO : in helpers
 main_dir = os.path.split(os.path.abspath(__file__))[0]
@@ -23,9 +24,6 @@ screen_size_y = 480
 tunnel_diameter = 300
 dist_focale = 100
 
-# WIP
-time_show_white_circle = 2000
-#time_show_white_circle = 200
 
 # Liste des sons. Sous-tuple de 3 éléments :
 #  - nom du fichier .wav
@@ -221,7 +219,7 @@ def main():
 
     timer_tick = 0
 
-    anim_objects = [ BlackCircle() ]
+    anim_objects = [ BlackCircle(), WhiteCircleAtEnd() ]
 
     img_boulette_originals = []
 
@@ -249,36 +247,6 @@ def main():
             screen_from_tunnel_x[x, y] = tex_coords[0]
             screen_from_tunnel_y[x, y] = tex_coords[1]
             screen_from_tunnel_x_lim[x, y] = texture_width - 1
-
-    print("precalc circle alpha source")
-    white_circle = pygame.Surface((screen_size_x, screen_size_y), flags=pygame.SRCALPHA)
-    white_circle.fill((255, 255, 255))
-    # Matrice contenant la distance (en pixels) par rapport au centre de l'écran.
-    white_circle_alpha_source = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
-    for x in range(screen_size_x):
-        for y in range(screen_size_y):
-            val = ((x-screen_size_x//2)**2 + (y-screen_size_y//2)**2)**0.5
-            white_circle_alpha_source[x, y] = val
-
-    # Précalcul de la transparence du cercle blanc qui apparaît à la fin
-    print("precalc white_circle_alphas")
-    white_circle_alphas = []
-    white_circle_temp = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
-    min_circles = [0] * 50 + [ int(r**1.2) for r in range(150) ]
-    max_circles = [ 1+int(r**1.2) for r in range(200) ]
-
-    for min_dist, max_dist in zip(min_circles, max_circles):
-        #white_circle_temp[:] = 255-((white_circle_alpha_source-50)*255)//150
-        #white_circle_temp[white_circle_alpha_source < 50] = 255
-        #white_circle_temp[white_circle_alpha_source >= 200] = 0
-        #min_dist = circle_index*2
-        #max_dist = min_dist+100
-        white_circle_temp[:] = 255-((white_circle_alpha_source-min_dist)*255)//(max_dist-min_dist)
-        white_circle_temp[white_circle_alpha_source < min_dist] = 255
-        white_circle_temp[white_circle_alpha_source >= max_dist] = 0
-        white_circle_next = numpy.zeros((screen_size_x, screen_size_y), dtype="u1")
-        white_circle_next[:] = white_circle_temp
-        white_circle_alphas.append(white_circle_next)
 
     print("precalc boulette rotations")
     # TODO : constantes pour le nombre d'image de boulette, et le step de rotation.
@@ -376,15 +344,6 @@ def main():
         for anim_object in anim_objects:
             anim_object.make_loop_action(screen, timer_tick)
 
-        # Affichage de la lumière finale.
-        if timer_tick > time_show_white_circle:
-            circle_index = timer_tick - time_show_white_circle
-            if circle_index < len(white_circle_alphas):
-                white_circle_alpha = pygame.surfarray.pixels_alpha(white_circle)
-                white_circle_alpha[:] = white_circle_alphas[circle_index]
-                del white_circle_alpha
-            screen.blit(white_circle, (0, 0))
-
         pygame.display.flip()
 
         while all_sounds and all_sounds[0][0] < timer_tick:
@@ -397,20 +356,6 @@ def main():
 
         if timer_tick == 1870:
             pygame.mixer.music.fadeout(500)
-
-        # TODO : test de rapidité. plutôt OK. Du coup, l'anim est moche, mais osef c'est provisoire.
-        #white_circle_temp[:] = 255-((white_circle_alpha_source-50)*255)//150
-        #white_circle_temp[white_circle_alpha_source < 50] = 255
-        #white_circle_temp[white_circle_alpha_source >= 200] = 0
-
-        #white_circle_temp[white_circle_alpha_source > timer_tick*1.5] = 0
-        #white_circle_temp[white_circle_alpha_source <= timer_tick*1.1] = 255
-        ##white_circle_temp[(white_circle_alpha_source > timer_tick*1.1) and (white_circle_alpha_source < timer_tick*1.5)] -= timer_tick*1.1
-        #white_circle_temp[numpy.all([
-        #    white_circle_alpha_source > timer_tick*1.1,
-        #    white_circle_alpha_source < timer_tick*1.5])
-        #] = (white_circle_alpha_source - timer_tick*1.1)*255 / (timer_tick*1.5 - timer_tick*1.1)
-
 
     pygame.quit()
 
