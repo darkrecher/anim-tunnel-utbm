@@ -109,6 +109,7 @@ def load_sounds():
 
 
 class Boulette():
+    # BIG TODO : si on met l'anim en pause, la boulette continue de se déplacer. Woups...
 
     DEG_TO_RAD_FACTOR = (2*math.pi) / 360
 
@@ -219,7 +220,12 @@ def main():
 
     timer_tick = 0
 
-    anim_objects = [ BlackCircle(), WhiteCircleAtEnd() ]
+    print("precalculating 'black circle'.")
+    black_circle = BlackCircle()
+    print("precalculating 'white circle for the end'.")
+    white_circle_at_end = WhiteCircleAtEnd()
+
+    anim_objects = [ black_circle, white_circle_at_end ]
 
     img_boulette_originals = []
 
