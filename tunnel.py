@@ -10,6 +10,7 @@ import pygame.surfarray
 import pygame.mixer
 from pygame.compat import geterror
 
+from code.texture_tunnel import TextureTunnel
 from code.black_circle import BlackCircle
 from code.white_circle_at_end import WhiteCircleAtEnd
 
@@ -21,8 +22,6 @@ img_dir = os.path.join(main_dir, "img")
 screen_size_x = 640
 screen_size_y = 480
 
-tunnel_diameter = 300
-dist_focale = 100
 
 
 # Liste des sons. Sous-tuple de 3 éléments :
@@ -69,32 +68,6 @@ def load_image(name, colorkey=None, use_alpha=False):
         image.set_colorkey(colorkey, RLEACCEL)
 
     return image, image.get_rect()
-
-
-def cylinder_coords_from_screen_coords(pix_x, pix_y):
-    a_x = pix_x - screen_size_x / 2
-    a_y = pix_y - screen_size_y / 2
-    if (a_x, a_y) == (0, 0):
-        raise ValueError(
-            "La coordonnée du milieu de l'écran ne peut pas atteindre le cylindre"
-        )
-    # https://stackoverflow.com/questions/15994194/how-to-convert-x-y-coordinates-to-an-angle
-    angle = math.atan2(a_y, a_x)
-    cylinder_z = dist_focale * tunnel_diameter / (math.sqrt(a_x ** 2 + a_y ** 2))
-    return angle, cylinder_z
-
-
-def tex_coord_from_screen_coords(pix_x, pix_y, texture_width, texture_height):
-    try:
-        angle, cylinder_z = cylinder_coords_from_screen_coords(pix_x, pix_y)
-    except ValueError:
-        return (0, 0)
-    tex_x = min(int(cylinder_z), texture_width)
-    tex_y = int(((angle + math.pi) * (texture_height - 1)) / (2 * math.pi))
-    # on décale tout de un cinquième, pour que le raccord moche entre
-    # le haut et le bas de l'image ne soit pas pil poil sur la partie gauche du tunnel.
-    tex_y = (tex_y + texture_height // 5) % texture_height
-    return (tex_x, tex_y)
 
 
 def load_sounds():
@@ -210,16 +183,10 @@ def main():
 
     all_sounds = load_sounds()
 
-    texture, texture_rect = load_image("texture.png")
-    texture_width = texture_rect.w
-    texture_height = texture_rect.h
-
-    array_texture_origin = pygame.surfarray.array2d(texture)
-    # TODO : euh... y'a vraiment besoin de copier ?
-    array_texture = array_texture_origin.copy()
-
     timer_tick = 0
 
+    print("precalculating 'texture tunnel'.")
+    texture_tunnel = TextureTunnel()
     print("precalculating 'black circle'.")
     black_circle = BlackCircle()
     print("precalculating 'white circle for the end'.")
@@ -237,22 +204,6 @@ def main():
             (boul_rect.w, boul_rect.h),
         )
         img_boulette_originals.append(boulette_scaled)
-
-    print("precalc tunnel mapping")
-    # Si la taille (width ou height) de l'image de texture ne tient pas
-    # dans un int 32 bits, ça va péter. Mais franchement osef.
-    screen_from_tunnel_x = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
-    screen_from_tunnel_y = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
-    screen_from_tunnel_x_lim = numpy.zeros((screen_size_x, screen_size_y), dtype="u4")
-
-    for x in range(screen_size_x):
-        for y in range(screen_size_y):
-            tex_coords = tex_coord_from_screen_coords(
-                x, y, texture_width, texture_height
-            )
-            screen_from_tunnel_x[x, y] = tex_coords[0]
-            screen_from_tunnel_y[x, y] = tex_coords[1]
-            screen_from_tunnel_x_lim[x, y] = texture_width - 1
 
     print("precalc boulette rotations")
     # TODO : constantes pour le nombre d'image de boulette, et le step de rotation.
@@ -279,15 +230,6 @@ def main():
             )
             boulette_imgs.append((boulette_rotated, rect_rotated, coord_hotpoint))
         boulette_imgs_all.append(boulette_imgs)
-
-    # TODO : duplicate code avec la main loop. De plus, j'affiche pas le fond noir.
-    # Bref, beurk, à homogénéiser.
-    pygame.surfarray.blit_array(
-        screen,
-        array_texture[
-            (screen_from_tunnel_x + 10) % texture_width, screen_from_tunnel_y
-        ],
-    )
 
     pygame.display.flip()
 
@@ -334,13 +276,7 @@ def main():
         if not pause:
             timer_tick += 1
 
-        pygame.surfarray.blit_array(
-            screen,
-            array_texture[
-                numpy.minimum(screen_from_tunnel_x + (timer_tick * 4), screen_from_tunnel_x_lim),
-                screen_from_tunnel_y,
-            ],
-        )
+        texture_tunnel.make_loop_action(screen, timer_tick)
 
         # Gestion de la boulette de papier.
         boulette.change_polar_coords()
