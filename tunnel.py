@@ -101,14 +101,14 @@ class Boulette():
 
     def change_polar_coords(self):
         # TODO : constantes, plize.
-        accel_angle = random.randint(-50, 50) / 2000
-        self.delta_angle += accel_angle
-        if self.delta_angle < -self.delta_angle_lim:
-            self.delta_angle -= accel_angle * 45
+        accel_angle = random.randint(-50, 50) / 500
+        if self.delta_angle < -self.delta_angle_lim and accel_angle < 0:
+            accel_angle = -accel_angle
             #print("lim down", accel_angle, self.delta_angle, self.angle)
-        if self.delta_angle > self.delta_angle_lim:
-            self.delta_angle -= accel_angle * 45
+        if self.delta_angle > self.delta_angle_lim and accel_angle > 0:
+            accel_angle = -accel_angle
             #print("lim up", accel_angle, self.delta_angle, self.angle)
+        self.delta_angle += accel_angle
         self.angle += self.delta_angle
         if self.angle < 0:
             self.angle += 360
