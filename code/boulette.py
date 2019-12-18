@@ -118,15 +118,20 @@ class Boulette(AnimationObject):
         est constitué d'un sous-tuple. Chaque élément de ce sous-tuple représente une
         image rotationnée de la boulette, ils sont rangés par ordre d'angle : tourné à
         0 degré, à 15 degrés, 30 degrés, etc.
-        Chaque élément est un sous-sous-tuple, représentant une image tournée
-        d'un sprite. Ce sous-sous-tuple contient 3 éléments :
+
+        Chaque élément de ce sous-tuple est un sous-sous-tuple, représentant une image
+        tournée d'un sprite. Ce sous-sous-tuple contient 3 éléments :
          - l'image en elle-même (pygame.Surface),
          - la taille du rectangle englobant de l'image (pygame.Rect)
          - le vecteur (x, y) de déplacement, depuis le "hotpoint" de la boulette,
          jusqu'au coin supérieur gauche du sprite.
 
-        Initialisation des variables membres positionnant la boulette (angle, distance,
-        vitesse d'angle, vitesse de distance, ...).
+        Le "hotpoint" est une point, dans une image de sprite, permettant de savoir
+        où la positionner par rapport aux autres. Lorsqu'on échange l'image d'un sprite,
+        on place le hotpoint de la nouvelle image sur le hotpoint de l'ancienne.
+
+        Cette fonction effectue également l'init des variables membres positionnant
+        la boulette (angle, distance, vitesse d'angle, vitesse de distance, ...).
         """
 
         # Liste de pygame.Surface, contenant les images originales des sprites de
@@ -135,7 +140,7 @@ class Boulette(AnimationObject):
 
         for img_index in range(Boulette.NB_IMG_BOULETTES):
 
-            # Chargement d'un sprite.
+            # Chargement d'une image de sprite.
             filename_img = "boulette_0" + str(img_index + 1) + ".png"
             img_boulette, boul_rect = load_image(filename_img, use_alpha=True)
             # Réduction de sa taille, selon IMG_ORIGINAL_SCALE_DIVISOR.
@@ -150,18 +155,26 @@ class Boulette(AnimationObject):
 
         self.boulette_imgs_all = []
 
+        # Précalcul de toutes les images rotationnées et des hotpoints.
         for img_boulette_original in img_boulette_originals:
             boulette_imgs = []
             for angle in range(0, 360, Boulette.IMG_ROTATION_PRECISION):
+                # Vecteur de déplacement, depuis le centre de l'image, vers le hotpoint.
+                # Pour toutes les images originales, le hotpoint est situé en bas,
+                # et il est centrée horizontalement.
                 vect_center_to_middle_down = pygame.math.Vector2(
                     0,
                     (boul_rect.h // Boulette.IMG_ORIGINAL_SCALE_DIVISOR) // 2
                 )
+                # Comme on rotate l'image, il faut aussi rotater le hotpoint.
+                #
                 # Je sais pas pourquoi faut mettre "-angle" et pas "angle".
                 # Sûrement un truc compliqué de matheux.
                 vect_center_to_middle_down = vect_center_to_middle_down.rotate(-angle)
                 boulette_rotated = pygame.transform.rotate(img_boulette_original, angle)
                 rect_rotated = boulette_rotated.get_rect()
+                # Coordonnées du hotpoint de l'image rotatée, par rapport à l'origine,
+                # c'est à dire le coin supérieur gauche de l'image.
                 coord_hotpoint = (
                     -rect_rotated.w // 2 - vect_center_to_middle_down.x,
                     -rect_rotated.h // 2 - vect_center_to_middle_down.y
@@ -169,31 +182,55 @@ class Boulette(AnimationObject):
                 boulette_imgs.append((boulette_rotated, rect_rotated, coord_hotpoint))
             self.boulette_imgs_all.append(boulette_imgs)
 
+        # Nombre de rotation pour chaque image de sprite.
+        # Ça correspond à 360 / Boulette.IMG_ROTATION_PRECISION.
+        # On prend ce nombre à partir de la première image de boulette, d'où le "[0]".
+        # On pourrait le prendre à partir de n'importe laquelle, puisque toutes les
+        # images de boulettes ont été rotationnées avec le même angle.
         self.nb_rotation_img = len(self.boulette_imgs_all[0])
 
-        # On sépare l'état random de la boulette de l'état random de tout le reste.
-        # Comme ça les nombres aléatoires des déplacements de la boulette sont gérés
-        # indépendamment du reste.
-        # Ça sert à rien car aucun autre AnimObject n'utilise le random,
+        # On sépare la génération de nombres aléatoires de la boulette, de la génération
+        # de nombre de tout le reste du programme.
+        # Comme ça, les déplacements de la boulette sont totalement indépendamment
+        # de tout le reste.
+        # Ça ne sert à rien car aucun autre AnimObject n'utilise de nombres random,
         # mais ça fait classe.
         other_state = random.getstate()
         random.seed("Des morceaux de l'uuuutééééébéééééhèèèèèème !")
+        # self.my_randgen_state conserve l'état de génération de nombres aléatoires
+        # pour la boulette.
         self.my_randgen_state = random.getstate()
         random.setstate(other_state)
 
+        # Angle de positionnement de la boulette dans le tunnel.
         self.angle = Boulette.ANGLE_START
-        # On fait exprès de partir d'une distance de 0: le centre de l'écran.
+        # Distance de positionnement de la boulette par rapport au centre de l'écran.
+        # On fait exprès de partir d'une distance de 0 : le centre de l'écran.
         # Au début, la boulette va progressivement s'éloigner de l'écran, pour arriver
-        # jusqu'à self.dist == Boulette.DIST_MIN
+        # jusqu'à self.dist == Boulette.DIST_MIN.
         self.dist = 0.0
+        # Vitesse de variation de l'angle de positionnement.
         self.delta_angle = 0.0
+        # Vitesse de variation de la distance de positionnement.
         self.delta_dist = 0.0
+        # Compteur pour savoir à quel moment il faut changer d'image du sprite.
         self.img_counter = 0
+        # Index de l'image de sprite actuellement affichée.
         self.main_img_index = 0
 
 
     def _update_polar_coords(self):
+        """
+        Met à jour les coordonnées polaires de positionnement de la boulette,
+        ainsi que la variation de ces coordonnées.
+        c'est à dire les variables membres angle, dist, delta_angle, delta_dist.
+        """
 
+        # Génération aléatoire de l'accélération d'angle (accel_angle)
+        # et de l'accélération de distance (accel_dist).
+        # Comme expliqué dans la fonction __init__, on sépare la génération de nombres
+        # aléatoires de la boulette, de la génération de nombre de tout le reste.
+        # D'où tout un tas de bin's avec les variables other_state et my_randgen_state.
         other_state = random.getstate()
         random.setstate(self.my_randgen_state)
         a_amp = Boulette.ACCEL_ANGLE_SEMI_AMPLITUDE
@@ -203,19 +240,32 @@ class Boulette(AnimationObject):
         self.my_randgen_state = random.getstate()
         random.setstate(other_state)
 
+        # Contrainte sur la variation de l'angle. Si elle devient trop grande
+        # (en valeur absolue), et que l'accélération d'angle risque de la
+        # rendre encore plus grande, on modifie l'accélération d'angle
+        # pour faire revenir la variation à une valeur plus raisonnable.
         if any((
             self.delta_angle < -Boulette.DELTA_ANGLE_MAX and accel_angle < 0,
             self.delta_angle > Boulette.DELTA_ANGLE_MAX and accel_angle > 0,
         )):
             accel_angle = -accel_angle * Boulette.ACCEL_ANGLE_LIMITING_FACTOR
 
+        # Application de l'accélération et de la variation sur l'angle.
         self.delta_angle += accel_angle
         self.angle += self.delta_angle
+        # Contraignage à un angle entre 0 et 360.
+        # Normalement, pas besoin de faire un modulo, car la variation ne fait jamais
+        # changer l'angle de plus de 360 degrés (en positif ou en négatif).
         if self.angle < 0: self.angle += 360
         if self.angle > 360: self.angle -= 360
 
-        self.delta_dist += accel_dist
-        # Du coup: pas de garantie absolue que dist ne va pas sortir de
+        # Contrainte sur la variation de distance. Pareil que l'angle, avec une
+        # contrainte en plus :
+        # Si la valeur de distance est plus petite que dist_min ou plus grande que
+        # dist_max, on modifie l'accélération de distance pour faire revenir
+        # la variation à une valeur plus raisonnable.
+        #
+        # Du coup : pas de garantie absolue que la distance ne sortira jamais de
         # [dist_min, dist_max]. Mais osef.
         if any((
             self.delta_dist < -Boulette.DELTA_DIST_MAX and accel_dist < 0,
@@ -223,8 +273,10 @@ class Boulette(AnimationObject):
             self.delta_dist > Boulette.DELTA_DIST_MAX and accel_dist > 0,
             self.dist > Boulette.DIST_MAX and accel_dist > 0,
         )):
-            self.delta_dist -= accel_dist * Boulette.ACCEL_DIST_LIMITING_FACTOR
+            accel_dist -= accel_dist * Boulette.ACCEL_DIST_LIMITING_FACTOR
 
+        # Application de l'accélération et de la variation sur la distance.
+        self.delta_dist += accel_dist
         self.dist += self.delta_dist
 
 
