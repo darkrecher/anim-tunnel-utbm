@@ -281,6 +281,12 @@ class Boulette(AnimationObject):
 
 
     def _update_main_img_counter(self):
+        """
+        Met à jour les variables membres img_counter et main_img_index.
+        Lorsque main_img_index change, l'image de sprite change.
+        Lorsque main_img_index arrive après la dernière image de sprite, elle se
+        remet à zéro pour revenir à la première image.
+        """
 
         self.img_counter += 1
         if self.img_counter >= Boulette.IMG_COUNTER_PERIOD:
@@ -291,6 +297,12 @@ class Boulette(AnimationObject):
 
 
     def _get_cartez_coords(self):
+        """
+        Renvoie un tuple de deux entiers, représentant les coordonnées (en pixels),
+        de la position du hot point de la boulette.
+        Ces coordonnées sont calculées à partir des coordonnées polaires de la boulette.
+        C'est à dire self.dist et self.angle.
+        """
         angle_radian = self.angle * Boulette.DEG_TO_RAD_FACTOR
         return (
             int(screen_size_x // 2 + math.cos(angle_radian) * self.dist),
@@ -299,26 +311,61 @@ class Boulette(AnimationObject):
 
 
     def _get_img_and_coords(self):
+        """
+        Renvoie un tuple de deux éléments :
+         - l'image à afficher :
+            * choisie en fonction de l'index d'image de sprite (main_img_index),
+            * choisie en fonction de l'angle d'affichage, dépendant lui-même de
+              l'angle de positionnement de la boulette,
+            * mise à l'échelle en fonction de la distance d'affichage.
+         - la position du coin supérieur droit de l'image à afficher, définie
+           en fonction de la position de la boulette, la taille de l'image,
+           et son hotpoint.
+        """
 
         boulette_imgs_current = self.boulette_imgs_all[self.main_img_index]
-        # TODO : va falloir expliquer ce bazar.
+        # Calcul de l'angle de l'image de boulette, en fonction de son angle de
+        # positionnement dans le tunnel.
+        # Il faut se décaler de "Boulette.IMG_ROTATION_PRECISION / 2", car l'image
+        # de boulette tournée à 15 degrés correspond à une position entre 7.5 et
+        # 22.5 degrés, l'image tournée à 30 degrés correspond à une position entre
+        # 22.5 degrés et 37.5 degrés, et ainsi de suite. On prend l'angle au milieu.
+        #
+        # Par contre, les autres ajustements, je ne me les justifie pas trop. Je les
+        # ais trouvés empiriquement. Il faut ajouter 90 car on doit tourner d'un quart
+        # de tour, sûrement parce que l'angle initial est par rapport à l'axe
+        # horizontal (cercle trigo) et que la boulette est initialement orientée vers
+        # le haut, et non pas vers la droite.
+        # En plus de tout ça, il faut tout retourner en faisant 360 - angle,
+        # et ça je ne sais vraiment pas pourquoi. Mais ça marche comme ça, youpi !
         adjusted_angle = 360 - self.angle + Boulette.IMG_ROTATION_PRECISION / 2 + 90
 
+        # Petite règle de 3, entre un angle qui varie de 0 à 360, et un index d'image
+        # rotatée, qui varie entre 0 et self.nb_rotation_img-1
         index_boulette_rotation = int((adjusted_angle * self.nb_rotation_img) / 360)
+        # Petit ajustement de l'index, parce que l'angle initial varie bien entre
+        # 0 et 360, mais comme on l'a ajusté avec un "+ 90", ça peut dépasser un peu.
         if index_boulette_rotation >= self.nb_rotation_img:
             index_boulette_rotation -= self.nb_rotation_img
-
-        scale_factor = (
-            Boulette.SCALE_FACTOR_OFFSET + self.dist / Boulette.SCALE_FACTOR_DIVISOR
-        )
+        # Et on peut enfin récupérer la bonne image, avec son hotpoint !
         boulette_rotated, rect_rotated, coord_hotpoint = boulette_imgs_current[
             index_boulette_rotation
         ]
 
+        # Calcul du facteur d'échelle, avec la fonction affine qui va bien.
+        scale_factor = (
+            Boulette.SCALE_FACTOR_OFFSET + self.dist / Boulette.SCALE_FACTOR_DIVISOR
+        )
+        # Mise à l'échelle de l'image. Plus elle est près du centre de l'écran,
+        # plus elle paraît petite, pour donner l'impression qu'elle est plus loin
+        # dans le tunnel.
         boulette_scaled = pygame.transform.scale(
             boulette_rotated,
             (int(rect_rotated.w * scale_factor), int(rect_rotated.h * scale_factor))
         )
+        # Récupération des coordonnées x, y en pixels de la boulette.
+        # Ajustement par rapport au hot-point, afin d'avoir les coordonnées du coin
+        # supérieur droit de l'image à afficher.
         boulette_coords = self._get_cartez_coords()
         coord_img_left_up = (
             int(boulette_coords[0] + coord_hotpoint[0] * scale_factor),
@@ -329,7 +376,9 @@ class Boulette(AnimationObject):
 
     def make_loop_action(self, screen, timer_tick):
         """
-        Gestion de la boulette de papier.
+        Gestion complète de la boulette de papier.
+        On la déplace, on la tourne, on détermine la bonne image à afficher,
+        et on l'affiche.
         """
         self._update_polar_coords()
         self._update_main_img_counter()
