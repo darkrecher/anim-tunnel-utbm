@@ -7,49 +7,138 @@ from code.anim_object import AnimationObject
 
 
 class Boulette(AnimationObject):
-    # BIG TODO : si on met l'anim en pause, la boulette continue de se déplacer. Woups...
+    """
+    AnimationObject affichant une boulette de papier qui se promène autour du tunnel.
 
-    DEG_TO_RAD_FACTOR = (2*math.pi) / 360
+    Les mouvements sont calculés par des coordonnées polaires, centrée sur le centre
+    de l'écran. On fait varier l'angle et la distance de manière à-peu-près aléatoire.
 
+    On définit l'angle, la vitesse de variation de l'angle (positive ou négative),
+    et l'accélération de la variation de l'angle. La vitesse est contrainte entre deux
+    bornes, pour ne pas que la boulette tourne trop vite dans le tunnel.
+    La contrainte est appliqué de manière progressive, c'est à dire que si la vitesse
+    devient trop grande, on applique une accélération négative. Si la vitesse
+    est trop grande négativement, on applique une accélération positive.
+
+    Pour la distance, c'est pareil. Mais on ajoute une contrainte supplémentaire :
+    la valeur de la distance est bornée (en plus de sa vitesse), pour que la boulette
+    reste à peu près à mi-chemin du tunnel, au fur et à mesure qu'il avance.
+
+    La boulette est constituée de plusieurs sprites, on les fait cycler périodiquement.
+
+    En plus de cycler les sprites, on les tourne, en fonction de la position dans le
+    tunnel, pour montrer que la boulette tourne au fur et à mesure qu'elle se déplace
+    sur la paroi du tunnel. Les images rotationnées sont précalculées.
+
+    Et en plus de cycler et de tourner, on ajuste la taille de la boulette, selon
+    qu'elle est plus ou moins proche du centre, pour simuler une vue en 3D.
+    (Vous aurez compris qu'il n'y a absolument pas de 3D dans toute cette anim).
+    """
+
+    # Facteur de conversion degrés vers radians.
+    DEG_TO_RAD_FACTOR = (2 * math.pi) / 360
+    # Facteur de réduction des images de la boulette de papier.
+    # Ces images sont super grandes au départ, mais je veux les garder tel quels,
+    # si jamais j'ai besoin de les avoir en grande taille pour une raison ou une autre.
+    # Par exemple, si cette variable vaut 4, les sprites seront 4 fois plus petits
+    # que les images originales.
     IMG_ORIGINAL_SCALE_DIVISOR = 4
 
-    # Il faut mettre un diviseur de 360, sinon ça ne va pas tomber juste.
+    # Précision, en degrés, des angles de rotations pour les images de la boulette.
+    # Par exemple, si cette valeur vaut 15, on précalcule une rotation à 0 degrés,
+    # une autre à 15 degrés, une troisième à 30 degrés. Etc.
+    # Cette valeur doit être un diviseur de 360, sinon ça ne va pas tomber juste.
     IMG_ROTATION_PRECISION = 15
 
+    # Nombre de sprites de la boulette de papier.
+    # Ces sprites seront lus à partir de fichiers png, dans le répertoire "img".
+    # Le noms de ces fichiers est de la forme "boulette_xx.png", avec xx variant
+    # de 1 à NB_IMG_BOULETTES, écrit sur 2 chiffres.
+    # "boulette_01.png", "boulette_02.png", ...
     NB_IMG_BOULETTES = 5
 
+    # Valeur initiale de l'angle permettant de positionner la boulette de papier
+    # dans le tunnel (en degrés).
     ANGLE_START = 20.0
 
     # Distance min et max, en pixels, entre le centre de l'écran et la boulette.
+    # Si la boulette se rapproche trop ou s'éloigne trop, on modifie l'accélération
+    # pour ramener la distance entre ces deux bornes.
     DIST_MIN = 50
     DIST_MAX = 100
 
+    # Vitesse max (en positif et en négatif, et en degrés) de variation de l'angle de
+    # la boulette. Si ça dépasse, on modifie l'accélération pour diminuer la vitesse.
     DELTA_ANGLE_MAX = 1.0
+    # Vitesse max (en positif et en négatif, et en pixels) de variation de la distance
+    # de la boulette par rapport au centre de l'écran.
+    # Si ça dépasse, on modifie l'accélération pour diminuer la vitesse.
     DELTA_DIST_MAX = 0.5
 
+    # Amplitude (en positif et en négatif) de l'accélération de l'angle de la boulette.
+    # C'est presque en degrés, à un facteur de division près : ACCEL_ANGLE_DIVISOR.
     ACCEL_ANGLE_SEMI_AMPLITUDE = 50
+    # Amplitude (en positif et en négatif) de l'accélération de la distance de la
+    # boulette par rapport au centre de l'écran.
+    # C'est presque en pixels, à un facteur de division près : ACCEL_DIST_DIVISOR.
     ACCEL_DIST_SEMI_AMPLITUDE = 50
+    # Diviseur de l'accélération de l'angle.
     ACCEL_ANGLE_DIVISOR = 500
+    # Diviseur de l'accélération de la distance par rapport au centre de l'écran.
     ACCEL_DIST_DIVISOR = 1000
 
+    # Facteur de limitation de l'accélération pour l'angle.
+    # Si la vitesse de l'angle devient trop grande (en valeur absolue), on modifie
+    # l'accélération. On prend l'accélération qui vient d'être déterminée de manière
+    # aléatoire, puis on prend son opposé, puis on la multiplie par ce facteur.
     ACCEL_ANGLE_LIMITING_FACTOR = 1
+    # Facteur de limitation de l'accélération pour la distance. Ça fonctionne de la
+    # même manière que le facteur de limitation pour l'angle.
     ACCEL_DIST_LIMITING_FACTOR = 0.5
 
+    # Période (en tick d'horloge) entre deux changements de sprites de la boulette
+    # de papier.
     IMG_COUNTER_PERIOD = 50
 
+    # La facteur d'échelle déterminant la taille de la boulette est une fonction
+    # affine de la distance par rapport au centre de l'écran.
+    # facteur = a * dist + b.
+    # Avec a = 1 / SCALE_FACTOR_DIVISOR, et b = SCALE_FACTOR_OFFSET.
     SCALE_FACTOR_OFFSET = 0.1
     SCALE_FACTOR_DIVISOR = 400
 
 
     def __init__(self):
+        """
+        Chargement des images de sprites, précalcul des images rotationnées,
+        rangement de toutes ces images dans la structure self.boulette_imgs_all.
 
+        self.boulette_imgs_all est une imbrication de tuples.
+        Chaque élément du tuple représente l'un des sprites de la boulette de papier, et
+        est constitué d'un sous-tuple. Chaque élément de ce sous-tuple représente une
+        image rotationnée de la boulette, ils sont rangés par ordre d'angle : tourné à
+        0 degré, à 15 degrés, 30 degrés, etc.
+        Chaque élément est un sous-sous-tuple, représentant une image tournée
+        d'un sprite. Ce sous-sous-tuple contient 3 éléments :
+         - l'image en elle-même (pygame.Surface),
+         - la taille du rectangle englobant de l'image (pygame.Rect)
+         - le vecteur (x, y) de déplacement, depuis le "hotpoint" de la boulette,
+         jusqu'au coin supérieur gauche du sprite.
+
+        Initialisation des variables membres positionnant la boulette (angle, distance,
+        vitesse d'angle, vitesse de distance, ...).
+        """
+
+        # Liste de pygame.Surface, contenant les images originales des sprites de
+        # boulette, sur lesquels on a appliqué la réduction de taille de départ.
         img_boulette_originals = []
 
         for img_index in range(Boulette.NB_IMG_BOULETTES):
 
+            # Chargement d'un sprite.
             filename_img = "boulette_0" + str(img_index + 1) + ".png"
             img_boulette, boul_rect = load_image(filename_img, use_alpha=True)
-
+            # Réduction de sa taille, selon IMG_ORIGINAL_SCALE_DIVISOR.
             boulette_scaled = pygame.transform.scale(
                 img_boulette,
                 (
@@ -59,13 +148,6 @@ class Boulette(AnimationObject):
             )
             img_boulette_originals.append(boulette_scaled)
 
-        # tuples imbriqués.
-        # Chaque elem du tuple le plus haut représente l'une des 6 images possibles de la boulette de papier.
-        # C'est un sous-tuple. Chaque elem de ce sous-tuple représente une image rotatée de la boulette.
-        # Rotatée à 15 degrés, puis 30, 45, etc. Ce sont des sous-sous-tuple.
-        # Le premier elem du sous-sous-tuple est l'image elle-même.
-        # Le deuxième est la taille de l'image.
-        # Le troisième est le vecteur (x, y) de décalage.
         self.boulette_imgs_all = []
 
         for img_boulette_original in img_boulette_originals:

@@ -97,6 +97,8 @@ def main():
 
     while going:
 
+        # BIG TODO : si on met l'anim en pause, la boulette continue de se déplacer. Woups...
+
         clock.tick(50)
 
         # Gestion des événements d'input (les touches, et la fermeture de la fenêtre)
