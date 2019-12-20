@@ -21,8 +21,8 @@ def main():
     L'animation n'est pas déclenchée tout de suite dès le lancement du script,
     on attend 10 secondes. Le décompte s'affiche dans la sortie standard.
 
-    J'avais besoin de ce temps d'attente, pour déclencher correctement
-    l'enregistrement de l'animation dans un fichier vidéo.
+    J'avais besoin de ce temps d'attente, pour avoir le temps de cliquer sur le bouton
+    déclenchant  l'enregistrement de l'animation dans un fichier vidéo.
 
     Cette fonction récupère le premier paramètre passé en ligne de commande
     (si il est présent), et l'utilise comme temps d'attente, en secondes.
