@@ -3,6 +3,7 @@ import pygame
 
 main_dir = os.getcwd()
 img_dir = os.path.join(main_dir, "img")
+audio_dir = os.path.join(main_dir, "audio")
 
 screen_size_x = 640
 screen_size_y = 480
