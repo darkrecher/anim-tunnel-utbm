@@ -1,5 +1,6 @@
 import os
 import pygame
+from pygame.compat import geterror
 
 main_dir = os.getcwd()
 img_dir = os.path.join(main_dir, "img")
